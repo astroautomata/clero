@@ -450,7 +450,7 @@ def test_summary_and_grid_helpers_cover_surface_and_profile_outputs() -> None:
     assert profile_records[-1]["level"] == 500.0
 
 
-BUNDLE_SHA256 = "055c4f346d0c9f6941b48ebc0637f1cbb52c33185e34e90867d41d8bca975492"
+BUNDLE_SHA256 = "1844f58df327c0c495c5342bdb1bfc91d4dcf5e202ddc9ab932bb53d1ac74ce1"
 TRAPPIST1E_1BAR = {**TRAPPIST1E, "P0": 1.0, "CO2": 4e-4, "CH4": 0.0}
 # (global, dayside, nightside) area-weighted surface temperature means, pinned 2026-09-05 against BUNDLE_SHA256.
 GOLDEN_TS = {"um": (234.694, 260.990, 208.399), "exocam": (240.603, 261.804, 219.401)}
