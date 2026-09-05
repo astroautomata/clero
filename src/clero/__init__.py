@@ -1,27 +1,14 @@
-"""CLERO: the CLimate Emulator for ROcky exoplanets.
+"""the CLimate Emulator for ROcky exoplanets.
 
-CLERO takes a hypothetical planet (eight parameters plus a target GCM) and returns its
-3D steady-state climate as 53 fields on a 32×64 latitude–longitude grid. It targets
-tidally locked ocean-covered rocky planets in or near the habitable zone.
+CLERO takes a hypothetical planet and returns its 3D steady-state climate as 53 fields on a
+32×64 latitude-longitude grid. It targets tidally locked ocean-covered rocky planets in or
+near the habitable zone. See the [README](https://github.com/edstevenson/clero#readme) for
+an introduction, [SCOPE.md](https://github.com/edstevenson/clero/blob/main/SCOPE.md) for the
+range of validity and [UNCERTAINTY.md](https://github.com/edstevenson/clero/blob/main/UNCERTAINTY.md)
+for how to use the predictive distribution.
 
-```python
-from clero import Emulator, TRAPPIST1E
-
-emu = Emulator()
-inputs = {**TRAPPIST1E, "P0": 1.0, "CO2": 4e-4, "CH4": 0.0, "GCM": "um"}
-climate = emu.predict(inputs)                        # best point estimate, dict of (32, 64) fields
-draws = emu.sample(inputs, n_samples=100, seed=0)    # 100 draws from the climate distribution
-```
-
-Start with the [README](https://github.com/edstevenson/clero#readme) for inputs,
-outputs and install. [SCOPE.md](https://github.com/edstevenson/clero/blob/main/SCOPE.md)
-gives the range of planets CLERO is valid for, and
-[UNCERTAINTY.md](https://github.com/edstevenson/clero/blob/main/UNCERTAINTY.md) explains
-model space, predictive variance and samples. Worked examples are in
-[demos/](https://github.com/edstevenson/clero/tree/main/demos).
-
-This page documents `Emulator` and the top-level helpers; the summary, profile,
-map and diagnostic functions are in `clero.climate_analysis`.
+`EARTH`, `M_EARTH` and `TRAPPIST1E` are ready-made planet inputs; `CORE_DOMAIN` and
+`EXTENDED_DOMAIN` hold the valid input ranges.
 """
 
 from importlib.metadata import version
@@ -34,14 +21,13 @@ from .presets import EARTH, M_EARTH, TRAPPIST1E
 
 __version__ = version("clero")
 
-__all__ = [
-    "CORE_DOMAIN",
+__all__ = [  # order is the order on the documentation page
+    "Emulator",
+    "climate_analysis",
     "EARTH",
-    "EXTENDED_DOMAIN",
     "M_EARTH",
     "TRAPPIST1E",
-    "Emulator",
-    "__version__",
-    "climate_analysis",
+    "CORE_DOMAIN",
+    "EXTENDED_DOMAIN",
     "orbital_period",
 ]

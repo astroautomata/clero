@@ -25,6 +25,7 @@ EARTH = {
     "CO2": 4.0e-4,  # volume fraction
     "CH4": 0.0,  # volume fraction
 }
+"""Earth around the Sun, as a tidally locked aquaplanet (its 365 d rotation period is beyond the extended domain, so it warns)."""
 
 # Earth-like planet around a 2600 K M dwarf at Earth's instellation. The rotation period is the
 # tidally locked orbital period from ThousandWorlds' stellar mass-luminosity relations (Kepler's law).
@@ -39,3 +40,5 @@ TRAPPIST1E = {
     "gravity": 9.12,  # m/s^2
     "P_rot": 6.1,  # days 
 }
+"""TRAPPIST-1e bulk and stellar parameters (Grimm et al. 2018); supply `P0`, `CO2` and `CH4` yourself."""
+"""Earth-like planet around a 2600 K M dwarf at Earth's instellation, with the tidally locked 5 d orbital period."""

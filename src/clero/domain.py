@@ -15,6 +15,7 @@ CORE_DOMAIN = {
     "F_star": (500.0, 1500.0),
     "T_star": (2500.0, 5800.0),
 }
+"""Where the training simulations are densest and CLERO is most reliable: `{input: (low, high)}`."""
 
 EXTENDED_DOMAIN = {
     "radius": (0.26, 2.76),
@@ -26,3 +27,4 @@ EXTENDED_DOMAIN = {
     "F_star": (400.0, 3100.0),
     "T_star": (2500.0, 5800.0),
 }
+"""The full extent of the training set; inputs outside it emit a `UserWarning`: `{input: (low, high)}`."""
