@@ -96,7 +96,7 @@ def test_private_load_checkpoint_rejects_legacy_linear_bundle(tmp_path: Path) ->
 def test_top_level_implementation_modules_are_private() -> None:
     public_modules = {module.name for module in pkgutil.iter_modules(clero.__path__) if not module.name.startswith("_")}
 
-    assert public_modules == {"climate_analysis", "inference", "inputs", "orbit"}
+    assert public_modules == {"climate_analysis", "inference", "inputs"}
     assert not hasattr(clero, "load_checkpoint")
     assert importlib.util.find_spec("clero.checkpoint") is None
     assert importlib.util.find_spec("clero.gplfr_runtime") is None

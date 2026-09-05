@@ -10,8 +10,7 @@ from importlib.metadata import version
 
 from . import climate_analysis, inputs
 from .inference import Emulator
-from .orbit import orbital_period
-from .inputs import CORE_DOMAIN, EARTH, EXTENDED_DOMAIN, M_EARTH, TRAPPIST1E
+from .inputs import CORE_DOMAIN, EARTH, EXTENDED_DOMAIN, M_EARTH, TRAPPIST1E, orbital_period
 
 __version__ = version("clero")
 
@@ -19,5 +18,4 @@ __all__ = [  # order is the order on the documentation page
     "Emulator",
     "climate_analysis",
     "inputs",
-    "orbital_period",
 ]

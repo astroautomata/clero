@@ -1,4 +1,4 @@
-"""Ready-made planet inputs and the valid input ranges.
+"""Everything for constructing planet inputs: reference planets, valid input ranges, and an orbital-period estimate.
 
 `EARTH`, `M_EARTH` and `TRAPPIST1E` are complete or near-complete input dicts to start from;
 override what you need:
@@ -11,8 +11,13 @@ override what you need:
     climate = emu.predict({**TRAPPIST1E, "P0": 2.0, "CO2": 4e-4, "CH4": 0.0})  # TRAPPIST-1e with a 2 bar atmosphere
 
 `CORE_DOMAIN` and `EXTENDED_DOMAIN` are the input ranges from SCOPE.md as `{input: (low, high)}`
-dicts, in the units used by `Emulator`. All of these are also importable directly from `clero`.
+dicts, in the units used by `Emulator`. `orbital_period` estimates the tidally locked rotation
+period from instellation and stellar temperature. All of these are also importable directly
+from `clero`.
 """
+
+import numpy as np
+from numpy.typing import ArrayLike
 
 # Earth around the Sun (treated as a tidally locked aquaplanet). Its 365 d rotation period lies
 # beyond the extended domain's 220 d bound (SCOPE.md), so predictions from EARTH emit a UserWarning.
@@ -67,3 +72,29 @@ EXTENDED_DOMAIN = {
     "T_star": (2500.0, 5800.0),
 }
 """The full extent of the training set; inputs outside it emit a `UserWarning`: `{input: (low, high)}`."""
+
+
+def orbital_period(F_star: ArrayLike, T_star: ArrayLike) -> np.ndarray:
+    """Estimate the orbital period in days from instellation (W/m²) and stellar temperature (K).
+
+    For a tidally locked planet this is also its rotation period, so it can be used as
+    `P_rot` when no measured period is available (prefer a measured one when it is).
+    Stellar mass and luminosity come from empirical main-sequence relations: Cassisi &
+    Salaris (2019) with Duric (2004) below 3300 K, Mann et al. (2013) from 3300 to 4800 K,
+    and Moya et al. (2018) above; the semi-major axis then follows from the flux and the
+    period from Kepler's third law. The relations are approximate and piecewise, with
+    small jumps at the regime boundaries. Accepts scalars or arrays.
+    """
+    flux, temperature = np.broadcast_arrays(np.asarray(F_star, dtype=float), np.asarray(T_star, dtype=float))
+    mass, luminosity = np.full_like(temperature, np.nan), np.full_like(temperature, np.nan)
+    cool = temperature < 3300
+    medium = (temperature >= 3300) & (temperature < 4800)
+    warm = temperature >= 4800
+
+    luminosity[cool] = (0.763 * temperature[cool] / 5777 - 0.224) ** 2 * (temperature[cool] / 5777) ** 4
+    mass[cool] = (luminosity[cool] / 0.23) ** (1 / 2.3)
+    mass[medium] = np.polyval((2.65e-10, -3.488e-6, 1.544e-2, -22.297), temperature[medium])
+    luminosity[medium] = np.polyval((2.95e-11, -2.49e-7, 7.40e-4, -0.781), temperature[medium])
+    mass[warm] = -0.964 + 3.475e-4 * temperature[warm]
+    luminosity[warm] = 10 ** ((np.log10(mass[warm]) + 0.0008) / 0.2227)
+    return np.asarray(365.25 * (luminosity * 1361 / flux) ** 0.75 / np.sqrt(mass))
