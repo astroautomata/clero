@@ -20,7 +20,7 @@ from ._gplfr_runtime import (
 
 
 class Emulator:
-    """The CLERO climate emulator. Loads the shipped model (the exact weights used in the paper).
+    """The CLERO emulator. Loads the shipped model (the exact weights used in the paper).
 
     `predict` gives the best point estimate of a planet's climate and `sample` draws from
     the climate distribution. Both accept one planet or a batch, and return fields in
