@@ -14,6 +14,7 @@ from clero.climate_analysis import (
     ice_fraction_map,
     latitude_centers,
     latitude_weights,
+    longitude_centers,
     map_records,
     meridional_mean,
     net_toa_radiation,
@@ -206,3 +207,52 @@ def test_temperature_profile_extends_to_surface_at_p0() -> None:
     assert len(plot_profile(pred, "temperature", P0=P0, include_surface=False)[1].lines[0].get_xdata()) == 10
     assert len(plot_profile(pred, "temperature", include_surface=True)[1].lines[0].get_xdata()) == 10
     plt.close("all")
+
+
+def _sphere_grid(n_lat: int, n_lon: int) -> tuple[np.ndarray, np.ndarray]:
+    lat, lon = np.deg2rad(latitude_centers(n_lat)), np.deg2rad(longitude_centers(n_lon))
+    return np.meshgrid(lat, lon, indexing="ij")
+
+
+def test_spectral_synthesis_reproduces_band_limited_fields_exactly() -> None:
+    from clero.climate_analysis import spectral_synthesis, zonal_spectral_synthesis
+
+    # Degree-2 harmonics sampled on the CLERO grid: P2(sin lat) (m = 0) and cos^2(lat) cos(2 lon) (m = 2).
+    def analytic(lat, lon):
+        return 250.0 + 30.0 * (1.5 * np.sin(lat) ** 2 - 0.5) - 20.0 * np.cos(lat) ** 2 * np.cos(2.0 * lon)
+
+    fine, lat_f, lon_f = spectral_synthesis(analytic(*_sphere_grid(32, 64)), n_lat=64, n_lon=128)
+    assert fine.shape == (64, 128) and lat_f.shape == (64,) and lon_f.shape == (128,)
+    assert_allclose(fine, analytic(*np.meshgrid(np.deg2rad(lat_f), np.deg2rad(lon_f), indexing="ij")), atol=1e-9)
+    assert_allclose(lon_f, longitude_centers(128))  # substellar point stays at 0, fine grid tiles [-180, 180]
+
+    zonal_fine, lat_z = zonal_spectral_synthesis(analytic(*_sphere_grid(32, 64)).mean(axis=1), n_lat=50)
+    assert_allclose(zonal_fine, 250.0 + 30.0 * (1.5 * np.sin(np.deg2rad(lat_z)) ** 2 - 0.5), atol=1e-9)
+
+
+def test_spectral_synthesis_preserves_area_mean_of_emulator_field() -> None:
+    from clero import Emulator, TRAPPIST1E
+    from clero.climate_analysis import global_mean, latitude_weights, spectral_synthesis
+
+    ts = Emulator().predict({**TRAPPIST1E, "P0": 1.0, "CO2": 4e-4, "CH4": 0.0}, fields=["surface_temperature"])["surface_temperature"]
+    fine, lat_f, _ = spectral_synthesis(ts)
+    assert_allclose(fine.mean(), global_mean(ts, latitude_centers(32)), rtol=1e-5)  # equal-area cells: plain mean is the area mean (midpoint rule)
+    assert fine.min() > ts.min() - 15.0 and fine.max() < ts.max() + 15.0  # bounded overshoot between grid points
+
+
+def test_field_map_spectral_flag_switches_between_smooth_and_cells() -> None:
+    plt = pytest.importorskip("matplotlib.pyplot")
+    from clero import Emulator, TRAPPIST1E
+    from clero.climate_analysis import ice_fraction_map, wind_map, zonal_cross_section
+
+    pred = Emulator().predict({**TRAPPIST1E, "P0": 1.0, "CO2": 4e-4, "CH4": 0.0})
+    fig_s, ax_s = field_map(pred, "surface_temperature", colorbar=False)
+    fig_c, ax_c = field_map(pred, "surface_temperature", colorbar=False, spectral=False)
+    assert ax_s.collections[0].get_array().size == 256 * 512
+    assert ax_c.collections[0].get_array().size == 32 * 64
+    fig_i, ax_i = ice_fraction_map(pred, colorbar=False)
+    assert set(np.unique(np.asarray(ax_i.collections[0].get_array()))).issubset({0.0, 1.0})
+    fig_w, _ = wind_map(pred, colorbar=False)
+    fig_z, _ = zonal_cross_section(pred, "temperature", P0=1.0)
+    for fig in (fig_s, fig_c, fig_i, fig_w, fig_z):
+        plt.close(fig)

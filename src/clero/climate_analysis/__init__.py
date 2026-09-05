@@ -24,11 +24,13 @@ from .maps import (
     map_records,
     meridional_mean,
     net_radiation_map,
+    spectral_synthesis,
     surface_map,
     wind_map,
     wind_streamlines,
     zonal_cross_section,
     zonal_mean,
+    zonal_spectral_synthesis,
 )
 from .profiles import plot_profile, pressure_levels, profile_table, stack_levels, vertical_profile
 from .diagnostics import bond_albedo, ice_fraction, net_toa_radiation, water_vapor_path
@@ -67,6 +69,7 @@ __all__ = [
     "summarize_outputs",
     "summary_table",
     "stack_levels",
+    "spectral_synthesis",
     "surface_map",
     "vertical_profile",
     "water_vapor_path",
@@ -75,4 +78,5 @@ __all__ = [
     "write_csv",
     "zonal_cross_section",
     "zonal_mean",
+    "zonal_spectral_synthesis",
 ]
