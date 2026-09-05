@@ -8,11 +8,15 @@
 - If you just want a prediction, use physical space. 
 - If you need summary statistics (means, standard deviations, etc.), you should computed these in *model space* first, and then map back to natural units with `to_physical`, or you will get skewed summaries.
 
+
+
 ## Getting uncertainty: analytic variance or samples
 
 - `predict(..., space="model", return_variance=True)` returns, alongside the mean, the variance of each field at every grid cell (a `(32, 64)` array), computed analytically. Because it is per cell, it says nothing about how cells vary together, so it cannot give the uncertainty of anything that combines cells, such as a global mean; use samples for that. It is only available in model space, for the reason given above.
 - `sample(...)` returns draws from the climate distribution.
-- `sample(..., sample_residual=True)` adds a spatially white residual term to each draw, so per-cell spreads match the variance from `predict`. This is mainly for quantitative comparison/validation against other climate predictions like from GCMs, and is probably rarely useful otherwise. Details in the paper's Methods.
+- `sample(..., sample_residual=True)` and `predict(..., return_variance=True, include_residual=True)` include CLERO#s spatially white residual in the samples and analytic variance, respectively. This is mainly for quantitative comparison/validation against other climate predictions like from GCMs, and is probably rarely useful otherwise. Details in the paper's Methods.
+
+
 
 ## Example: summarise humidity in dex
 
@@ -41,7 +45,4 @@ model = emu.to_model(physical_fields, inputs)      # physical units -> model spa
 
 q = emu.to_physical("specific_humidity_3", model_q, inputs)   # one field -> one array
 ```
-
-
-
 
