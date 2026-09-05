@@ -1,11 +1,11 @@
 # CLERO (CLimate Emulator for ROcky exoplanets)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
-[![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)](https://edstevenson.github.io/clero/)
-[![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b.svg)](https://arxiv.org/)  <!-- TODO: replace with the paper's arXiv ID at submission -->
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)
+![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b.svg)  
 
-## What it is
+## What is CLERO
 
 CLERO is an exoGCM emulator that takes a hypothetical planet as input and outputs its 3D steady-state climate. It targets tidally locked ocean-covered rocky planets in or near the habitable zone; see [SCOPE.md](SCOPE.md) for detail on its scope of validity.
 
@@ -13,7 +13,7 @@ CLERO computes a probability distribution over climates: `predict` returns its m
 
 CLERO is based on Gaussian-process latent factor regression ([GPLFR](https://github.com/edstevenson/GPLFR)) and is trained on [ThousandWorlds](https://github.com/astroautomata/ThousandWorlds).
 
-Worked examples are in [demos/](demos/).
+Worked examples in [demos/](demos/).
 
 ## Inputs
 
