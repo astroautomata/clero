@@ -10,7 +10,7 @@ import numpy as np
 from scipy.linalg import solve_triangular
 
 from ._checkpoint import _CheckpointBundle
-from .domain import EXTENDED_DOMAIN
+from .inputs import EXTENDED_DOMAIN
 
 
 ASR_OLR_FIELDS = {"asr", "olr"}
