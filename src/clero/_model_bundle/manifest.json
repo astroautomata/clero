@@ -1,0 +1,544 @@
+{
+  "asr_olr_normalize_by_f_star": true,
+  "gcm_labels": [
+    "exocam",
+    "exocam-pre2022",
+    "exoplasim",
+    "lfric",
+    "um"
+  ],
+  "grid_shape": [
+    32,
+    64
+  ],
+  "input_names": [
+    "T_star",
+    "F_star",
+    "radius",
+    "gravity",
+    "P_rot",
+    "P0",
+    "CO2",
+    "CH4"
+  ],
+  "input_transforms": {
+    "CH4": {
+      "kwargs": {
+        "s": 1e-08,
+        "stat_key_pattern": "CH4"
+      },
+      "mean": 1.2065691947937012,
+      "std": 3.523364782333374,
+      "strategy": "arcsinh_Z-scaling"
+    },
+    "CO2": {
+      "kwargs": {
+        "s": 1e-06,
+        "stat_key_pattern": "CO2"
+      },
+      "mean": 5.784908294677734,
+      "std": 3.6521382331848145,
+      "strategy": "arcsinh_Z-scaling"
+    },
+    "F_star": {
+      "kwargs": {
+        "stat_key_pattern": "F_star"
+      },
+      "mean": 1228.9083251953125,
+      "std": 538.349365234375,
+      "strategy": "Z-scaling"
+    },
+    "P0": {
+      "kwargs": {
+        "stat_key_pattern": "P0"
+      },
+      "mean": 11.767680168151855,
+      "std": 1.1551427841186523,
+      "strategy": "log_Z-scaling"
+    },
+    "P_rot": {
+      "kwargs": {
+        "stat_key_pattern": "P_rot"
+      },
+      "mean": 2.657710552215576,
+      "std": 0.8686829805374146,
+      "strategy": "log_Z-scaling"
+    },
+    "T_star": {
+      "kwargs": {
+        "stat_key_pattern": "T_star"
+      },
+      "mean": 3725.756103515625,
+      "std": 1212.7294921875,
+      "strategy": "Z-scaling"
+    },
+    "gravity": {
+      "kwargs": {
+        "stat_key_pattern": "gravity"
+      },
+      "mean": 9.749713897705078,
+      "std": 1.5496363639831543,
+      "strategy": "Z-scaling"
+    },
+    "radius": {
+      "kwargs": {
+        "stat_key_pattern": "radius"
+      },
+      "mean": 6394381.0,
+      "std": 987879.3125,
+      "strategy": "Z-scaling"
+    }
+  },
+  "linear_trend": {
+    "design_cfg": {
+      "inputs": true,
+      "intercept": false,
+      "sim_onehot": true
+    }
+  },
+  "model_type": "gplfr_map",
+  "output_names": [
+    "surface_temperature",
+    "temperature_0",
+    "temperature_1",
+    "temperature_2",
+    "temperature_3",
+    "temperature_4",
+    "temperature_5",
+    "temperature_6",
+    "temperature_7",
+    "temperature_8",
+    "temperature_9",
+    "specific_humidity_0",
+    "specific_humidity_1",
+    "specific_humidity_2",
+    "specific_humidity_3",
+    "specific_humidity_4",
+    "specific_humidity_5",
+    "specific_humidity_6",
+    "specific_humidity_7",
+    "specific_humidity_8",
+    "specific_humidity_9",
+    "asr",
+    "olr",
+    "cloud_fraction_0",
+    "cloud_fraction_1",
+    "cloud_fraction_2",
+    "cloud_fraction_3",
+    "cloud_fraction_4",
+    "cloud_fraction_5",
+    "cloud_fraction_6",
+    "cloud_fraction_7",
+    "cloud_fraction_8",
+    "cloud_fraction_9",
+    "u_0",
+    "u_1",
+    "u_2",
+    "u_3",
+    "u_4",
+    "u_5",
+    "u_6",
+    "u_7",
+    "u_8",
+    "u_9",
+    "v_0",
+    "v_1",
+    "v_2",
+    "v_3",
+    "v_4",
+    "v_5",
+    "v_6",
+    "v_7",
+    "v_8",
+    "v_9"
+  ],
+  "output_transforms": {
+    "asr": {
+      "kwargs": {
+        "stat_key_pattern": "asr"
+      },
+      "strategy": "Z-scaling"
+    },
+    "cloud_fraction_0": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_0"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_1": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_1"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_2": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_2"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_3": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_3"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_4": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_4"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_5": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_5"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_6": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_6"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_7": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_7"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_8": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_8"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "cloud_fraction_9": {
+      "kwargs": {
+        "epsilon": 0.01,
+        "stat_key_pattern": "cloud_fraction_9"
+      },
+      "strategy": "smoothed_logit_Z-scaling"
+    },
+    "olr": {
+      "kwargs": {
+        "stat_key_pattern": "olr"
+      },
+      "strategy": "Z-scaling"
+    },
+    "specific_humidity_0": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_0"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_1": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_1"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_2": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_2"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_3": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_3"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_4": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_4"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_5": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_5"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_6": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_6"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_7": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_7"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_8": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_8"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "specific_humidity_9": {
+      "kwargs": {
+        "stat_key_pattern": "specific_humidity_9"
+      },
+      "strategy": "log_Z-scaling"
+    },
+    "surface_temperature": {
+      "kwargs": {
+        "stat_key_pattern": "surface_temperature"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_0": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_0"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_1": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_1"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_2": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_2"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_3": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_3"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_4": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_4"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_5": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_5"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_6": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_6"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_7": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_7"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_8": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_8"
+      },
+      "strategy": "Z-scaling"
+    },
+    "temperature_9": {
+      "kwargs": {
+        "stat_key_pattern": "temperature_9"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_0": {
+      "kwargs": {
+        "stat_key_pattern": "u_0"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_1": {
+      "kwargs": {
+        "stat_key_pattern": "u_1"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_2": {
+      "kwargs": {
+        "stat_key_pattern": "u_2"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_3": {
+      "kwargs": {
+        "stat_key_pattern": "u_3"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_4": {
+      "kwargs": {
+        "stat_key_pattern": "u_4"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_5": {
+      "kwargs": {
+        "stat_key_pattern": "u_5"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_6": {
+      "kwargs": {
+        "stat_key_pattern": "u_6"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_7": {
+      "kwargs": {
+        "stat_key_pattern": "u_7"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_8": {
+      "kwargs": {
+        "stat_key_pattern": "u_8"
+      },
+      "strategy": "Z-scaling"
+    },
+    "u_9": {
+      "kwargs": {
+        "stat_key_pattern": "u_9"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_0": {
+      "kwargs": {
+        "stat_key_pattern": "v_0"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_1": {
+      "kwargs": {
+        "stat_key_pattern": "v_1"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_2": {
+      "kwargs": {
+        "stat_key_pattern": "v_2"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_3": {
+      "kwargs": {
+        "stat_key_pattern": "v_3"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_4": {
+      "kwargs": {
+        "stat_key_pattern": "v_4"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_5": {
+      "kwargs": {
+        "stat_key_pattern": "v_5"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_6": {
+      "kwargs": {
+        "stat_key_pattern": "v_6"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_7": {
+      "kwargs": {
+        "stat_key_pattern": "v_7"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_8": {
+      "kwargs": {
+        "stat_key_pattern": "v_8"
+      },
+      "strategy": "Z-scaling"
+    },
+    "v_9": {
+      "kwargs": {
+        "stat_key_pattern": "v_9"
+      },
+      "strategy": "Z-scaling"
+    }
+  },
+  "raw_output_names": [
+    "surface_temperature",
+    "temperature_0",
+    "temperature_1",
+    "temperature_2",
+    "temperature_3",
+    "temperature_4",
+    "temperature_5",
+    "temperature_6",
+    "temperature_7",
+    "temperature_8",
+    "temperature_9",
+    "specific_humidity_0",
+    "specific_humidity_1",
+    "specific_humidity_2",
+    "specific_humidity_3",
+    "specific_humidity_4",
+    "specific_humidity_5",
+    "specific_humidity_6",
+    "specific_humidity_7",
+    "specific_humidity_8",
+    "specific_humidity_9",
+    "asr",
+    "olr",
+    "cloud_fraction_0",
+    "cloud_fraction_1",
+    "cloud_fraction_2",
+    "cloud_fraction_3",
+    "cloud_fraction_4",
+    "cloud_fraction_5",
+    "cloud_fraction_6",
+    "cloud_fraction_7",
+    "cloud_fraction_8",
+    "cloud_fraction_9",
+    "u_0",
+    "u_1",
+    "u_2",
+    "u_3",
+    "u_4",
+    "u_5",
+    "u_6",
+    "u_7",
+    "u_8",
+    "u_9",
+    "v_0",
+    "v_1",
+    "v_2",
+    "v_3",
+    "v_4",
+    "v_5",
+    "v_6",
+    "v_7",
+    "v_8",
+    "v_9"
+  ],
+  "schema_version": "0.2.0",
+  "selected_step": 100,
+  "selection_metric": "shared_planets.relative_rmse.mean_per_variable",
+  "selection_metric_value": 0.38118477538228035
+}

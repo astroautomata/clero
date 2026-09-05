@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clero"
+version = "0.1.0"
+description = "CLERO: the CLimate Emulator for ROcky exoplanets (inference-only runtime)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Edward T. Stevenson", email = "es833@cam.ac.uk"}]
+keywords = ["exoplanets", "climate", "emulator", "Gaussian process", "GCM"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+dependencies = ["matplotlib>=3.7", "numpy>=2.0", "scipy>=1.10"]
+
+[project.urls]
+Homepage = "https://github.com/edstevenson/clero"
+Repository = "https://github.com/edstevenson/clero"
+
+[project.optional-dependencies]
+gpu = ["torch"]
+demos = ["nbformat", "nbclient", "ipykernel", "jupyter"]
+docs = ["pdoc"]
+dev = ["pytest", "clero[demos]"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["clero*"]
+
+[tool.setuptools.package-data]
+clero = ["_model_bundle/*"]
+
+[tool.ruff]
+line-length = 140
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

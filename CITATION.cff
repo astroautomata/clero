@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use CLERO, please cite it using the metadata below (the paper citation will be added at publication)."
+title: "CLERO: the CLimate Emulator for ROcky exoplanets"
+type: software
+authors:
+  - family-names: "Stevenson"
+    given-names: "Edward T."
+    affiliation: "University of Cambridge"
+license: MIT
+version: 0.1.0
+date-released: "2026-09-04"
+repository-code: "https://github.com/edstevenson/clero"
+keywords:
+  - exoplanets
+  - climate
+  - emulator
+  - Gaussian process
+  - GCM
+
+# Fill in the DOI (and journal details) once the accompanying paper is published, then uncomment:
+# preferred-citation:
+#   type: article
+#   title: "The uncertain climates of potentially habitable exoplanets"
+#   authors:
+#     - family-names: "Stevenson"
+#       given-names: "Edward T."
+#   journal: "Nature Astronomy"
+#   year: 2026
+#   doi: "TBD"
