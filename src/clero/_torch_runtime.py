@@ -111,13 +111,17 @@ def _predict_grid(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, sp
 def _predict_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, split: bool = False, include_residual: bool = False):
     x = _transform_inputs(bundle, x_raw)
     z_mean, z_var = _latent_stats(state, x, s)
-    y_mean, coherent, residual = _decoder_mean_and_variance(bundle, state, z_mean, z_var)
-    y_vars = (coherent, residual) if split else (coherent + residual if include_residual else coherent,)
+    y_mean, _, residual = _decoder_mean_and_variance(bundle, state, z_mean, z_var)
     if "linear_Gamma" in state:
         y_mean = y_mean + _torch().einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     mask = state["sh_mask"][None]
     mean = _spectral_grid_mean(bundle, state, y_mean * mask)
-    return (mean, *(_spectral_grid_variance(bundle, state, y_var * mask).reshape(mean.shape) for y_var in y_vars))
+    coherent = _coherent_grid_variance(bundle, state, z_var)
+    variances = (coherent,)
+    if split or include_residual:
+        residual = _spectral_grid_variance(bundle, state, residual * mask)
+        variances = (coherent, residual) if split else (coherent + residual,)
+    return (mean, *(variance.reshape(mean.shape) for variance in variances))
 
 
 def _predict_samples(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, n_samples: int, generator, space: str = "physical", sample_residual: bool = False):
@@ -302,7 +306,23 @@ def _spectral_grid_mean(bundle: _CheckpointBundle, state: dict[str, Any], y):
     return (coeffs @ state["inverse_sht"].float().T).reshape(y.shape[0], coeffs.shape[1], *bundle.manifest["grid_shape"])
 
 
+def _coherent_grid_variance(bundle: _CheckpointBundle, state: dict[str, Any], z_var):
+    """Project each shared latent loading to the grid before squaring, retaining coefficient covariance."""
+    torch = _torch()
+    if "coherent_grid_basis_sq" not in state:
+        loadings = _decoder_mean(bundle, state, torch.eye(z_var.shape[1], device=z_var.device, dtype=z_var.dtype))
+        loadings = loadings * state["sh_mask"][None]
+        basis = []
+        for j, _ in enumerate(bundle.manifest["raw_output_names"]):
+            mask = state[f"spectral_mask_{j}"].bool()
+            coeffs = loadings[:, mask, j].float() * float(state["spectral_sigma"][j].item())
+            basis.append(coeffs @ state["inverse_sht"][:, mask].float().T)
+        state["coherent_grid_basis_sq"] = torch.square(torch.stack(basis, dim=1))
+    return torch.einsum("nq,qfp->nfp", z_var.float(), state["coherent_grid_basis_sq"].float())
+
+
 def _spectral_grid_variance(bundle: _CheckpointBundle, state: dict[str, Any], y_var):
+    """Grid variance for residual coefficients, whose cross-covariances are zero."""
     torch = _torch()
     var_coeffs = torch.zeros((y_var.shape[0], y_var.shape[2], y_var.shape[1]), device=y_var.device, dtype=torch.float32)
     for j, _ in enumerate(bundle.manifest["raw_output_names"]):

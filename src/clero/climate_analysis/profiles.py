@@ -90,6 +90,7 @@ def plot_profile(
     title: str | None = None,
     units: str | None = None,
     log_xscale: bool = False,
+    log_yscale: bool = False,
     include_surface: bool = True,
     **kwargs,
 ):
@@ -106,6 +107,7 @@ def plot_profile(
         title: plot title.
         units: x-axis label.
         log_xscale: use a logarithmic x-axis (useful for humidity).
+        log_yscale: use a logarithmic y-axis (default linear).
         include_surface: for temperature with `P0` given, extend the profile down to the
             surface using `surface_temperature` (default True).
         **kwargs: forwarded to `plot`.
@@ -135,8 +137,8 @@ def plot_profile(
     kwargs.setdefault("linewidth", 2.0)
     ax.plot(x, y, **kwargs)
     ax.set(xlabel=units or variable or "value", ylabel=ylabel)
+    ax.set_yscale("log" if log_yscale else "linear")
     if pressure_axis:
-        ax.set_yscale("log")
         ax.invert_yaxis()
     if log_xscale:
         ax.set_xscale("log")

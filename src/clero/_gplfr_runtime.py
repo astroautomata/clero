@@ -157,13 +157,17 @@ def _predict_transformed_grid_mean_and_variance_arrays(bundle: _CheckpointBundle
     _check_variance_enabled(state)
     x = _transform_inputs(bundle, x_raw)
     z_mean, z_var = _latent_stats(state, x, s)
-    y_mean, coherent, residual = _decoder_mean_and_variance(bundle, state, z_mean, z_var)
-    y_vars = (coherent, residual) if split else (coherent + residual if include_residual else coherent,)
+    y_mean, _, residual = _decoder_mean_and_variance(bundle, state, z_mean, z_var)
     if "linear_Gamma" in state:
         y_mean = y_mean + np.einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     mask = state.get("sh_mask", np.ones(y_mean.shape[1:], dtype=bool))[None]
     mean = _spectral_grid_mean(bundle, state, y_mean * mask).astype(np.float32, copy=False)
-    return (mean, *(_spectral_grid_variance(bundle, state, y_var * mask).reshape(mean.shape) for y_var in y_vars))
+    coherent = _coherent_grid_variance(bundle, state, z_var)
+    variances = (coherent,)
+    if split or include_residual:
+        residual = _spectral_grid_variance(bundle, state, residual * mask)
+        variances = (coherent, residual) if split else (coherent + residual,)
+    return (mean, *(variance.reshape(mean.shape) for variance in variances))
 
 
 def _predict_grid_samples(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.ndarray, n_samples: int, rng: np.random.Generator, space: str = "physical", sample_residual: bool = False) -> np.ndarray:
@@ -495,7 +499,22 @@ def _spectral_grid_mean(bundle: _CheckpointBundle, state: dict[str, np.ndarray],
     return (coeffs @ state["inverse_sht"].T).reshape(y.shape[0], coeffs.shape[1], *bundle.manifest["grid_shape"])
 
 
+def _coherent_grid_variance(bundle: _CheckpointBundle, state: dict[str, np.ndarray], z_var: np.ndarray) -> np.ndarray:
+    """Project each shared latent loading to the grid before squaring, retaining coefficient covariance."""
+    if "coherent_grid_basis_sq" not in state:
+        loadings = _decoder_mean(bundle, state, np.eye(z_var.shape[1]))
+        loadings *= state.get("sh_mask", np.ones(loadings.shape[1:], dtype=bool))[None]
+        basis = []
+        for j, _ in enumerate(bundle.manifest["raw_output_names"]):
+            mask = state[f"spectral_mask_{j}"].astype(bool)
+            coeffs = loadings[:, mask, j].astype(np.float32) * float(state["spectral_sigma"][j])
+            basis.append(coeffs @ state["inverse_sht"][:, mask].T)
+        state["coherent_grid_basis_sq"] = np.square(np.stack(basis, axis=1))
+    return np.einsum("nq,qfp->nfp", z_var, state["coherent_grid_basis_sq"]).astype(np.float32)
+
+
 def _spectral_grid_variance(bundle: _CheckpointBundle, state: dict[str, np.ndarray], y_var: np.ndarray) -> np.ndarray:
+    """Grid variance for residual coefficients, whose cross-covariances are zero."""
     var_coeffs = np.zeros((y_var.shape[0], y_var.shape[2], y_var.shape[1]), dtype=np.float32)
     for j, _ in enumerate(bundle.manifest["raw_output_names"]):
         mask = state[f"spectral_mask_{j}"].astype(bool)

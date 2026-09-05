@@ -140,7 +140,7 @@ Top-level helpers:
 | scalar summaries     | `summarize_outputs`, `summary_table`, `global_mean`, `dayside_mean`, `nightside_mean`                                       |
 | vertical structure   | `vertical_profile`, `profile_table`, `profile_stats`, `stack_levels`, `pressure_levels`                                     |
 | physical diagnostics | `water_vapor_path`, `net_toa_radiation`, `ice_fraction`, `bond_albedo`                                                      |
-| maps & grids         | `surface_map`, `zonal_mean`, `meridional_mean`, `map_records`, `grid_records`, `spectral_synthesis`, `zonal_spectral_synthesis` |
+| maps & grids         | `surface_map`, `zonal_mean`, `meridional_mean`, `map_records`, `grid_records`                                               |
 | plots                | `field_map`, `ice_fraction_map`, `net_radiation_map`, `wind_map`, `wind_streamlines`, `zonal_cross_section`, `plot_profile` |
 | axes & weights       | `latitude_centers`, `longitude_centers`, `latitude_edges`, `longitude_edges`, `latitude_weights`                            |
 | io                   | `write_csv`                                                                                                                 |
@@ -153,8 +153,6 @@ from clero.climate_analysis import stack_levels
 climate_mean = emu.predict(inputs)
 T = stack_levels(climate_mean, "temperature")  # per-level fields -> one (10, 32, 64) array
 ```
-
-The plotting functions draw the smooth band-limited field rather than the 32×64 cells: CLERO's output is a T21 spherical-harmonic expansion, so `spectral_synthesis` evaluates it exactly on a fine equal-area grid (no information is added; the grid values are samples of this field). Pass `spectral=False` to see the cells instead. Statistics and diagnostics always use the native grid.
 
 
 

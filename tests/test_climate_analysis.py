@@ -160,11 +160,15 @@ def test_plot_profile_shows_global_mean_pressure_profile() -> None:
     assert ax.get_xlabel() == "K"
     assert ax.get_ylabel() == "pressure / hPa"
     assert ax.yaxis_inverted()
-    assert ax.get_yscale() == "log"
+    assert ax.get_yscale() == "linear"
     assert ax.lines[0].get_color() == "black"
     assert ax.lines[0].get_linewidth() == 2.0
     assert_allclose(ax.lines[0].get_xdata(), [3.5, 11.5, 19.5])
     assert_allclose(ax.lines[0].get_ydata(), levels / 100.0)
+    plt.close(fig)
+    fig, ax = plot_profile(pred, "temperature", levels=levels, log_yscale=True)
+    assert ax.get_yscale() == "log"
+    assert ax.yaxis_inverted()
     plt.close(fig)
 
 

@@ -202,6 +202,44 @@ def test_sample_marginal_variance_matches_predict_variance(monkeypatch, tmp_path
     assert_allclose(full.var(axis=0, ddof=1), total["surface_temperature"], rtol=0.08, atol=0.0)  # residual flags mirror
 
 
+@pytest.mark.parametrize("device", ["cpu", "cpu:0"], ids=["numpy", "torch"])
+@pytest.mark.parametrize("mask_second", [False, True])
+def test_grid_variance_preserves_coefficient_covariance(tmp_path: Path, device: str, mask_second: bool) -> None:
+    if device == "cpu:0":
+        pytest.importorskip("torch")
+    emulator = Emulator(bundle=build_gplfr_bundle(tmp_path), device=device)
+    basis = np.array([[1, 1, 7], [1, -1, 8], [2, 1, 9], [0, 1, 10]], dtype=np.float32)
+    emulator._bundle.gplfr_state.update(
+        Z_train=np.array([[2., -1.]]), K_inv_Z=np.array([[2., -1.]]),
+        sigma_f=np.array([1., 2.]), tau=np.array([2., 3.]),
+        n_coeffs=np.asarray(3), a_idxs_0=np.arange(3),
+        mu_w_0=np.array([[[1., 2., 99.], [2., -1., 99.]]]),
+        A_chol_0=np.eye(2)[None], alpha_sqrt=np.array([[2.], [1.], [1.]]),
+        sh_mask=np.array([[True], [not mask_second], [True]]),
+        spectral_mask_0=np.array([True, True, False]),
+        spectral_sigma=np.array([2.]), spectral_mean_0=np.array([10., 20.]),
+        inverse_sht=basis,
+    )
+    inputs = {"F_star": 1000.0}
+    field = "surface_temperature"
+    mean, coherent, residual = emulator.predict(inputs, space="model", split_variance=True)
+    _, default = emulator.predict(inputs, space="model", return_variance=True)
+    _, total = emulator.predict(inputs, space="model", return_variance=True, include_residual=True)
+
+    # Two shared latent variables drive both coefficients: sum their grid contributions before squaring.
+    b0, b1 = basis[:, 0], basis[:, 1] * (not mask_second)
+    expected = (0.1 * (2 * b0 + 8 * b1)**2 + 0.4 * (6 * b0 - 6 * b1)**2).reshape(2, 2)
+    expected_residual = (29.25 * b0**2 + 117 * b1**2).reshape(2, 2)
+    assert_allclose(coherent[field], expected, rtol=2e-5, atol=1e-6)
+    assert_allclose(residual[field], expected_residual, rtol=2e-5, atol=1e-6)
+    assert_allclose(default[field], coherent[field])
+    assert_allclose(total[field], expected + expected_residual, rtol=2e-5, atol=1e-6)
+    assert_allclose(mean[field], emulator.predict(inputs)[field])
+    for include_residual, variance in [(False, expected), (True, expected + expected_residual)]:
+        samples = emulator.sample(inputs, n_samples=16384, seed=4, sample_residual=include_residual)[field]
+        assert_allclose(samples.var(axis=0, ddof=1), variance, rtol=0.04, atol=1e-6)
+
+
 def test_predict_split_variance_components(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(clero.inference, "_load_checkpoint", lambda path=None: _load_checkpoint(build_gplfr_bundle(tmp_path)))
     inputs = {"F_star": 1000.0, "GCM": "UM"}
