@@ -5,7 +5,7 @@ from clero import orbital_period
 
 
 def test_orbital_period_reference():
-    # Reference values from XCE sampling/priors/orbit.py, including regime boundaries.
+    # Reference values from the ThousandWorlds orbital prior (the relations described in the paper), including regime boundaries.
     assert_allclose(
         orbital_period(1361, [2600, 3300, 4000, 4800, 5777]),
         [5.03438215, 25.29746998, 72.02134640, 134.32582144, 415.26496203],
