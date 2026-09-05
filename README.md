@@ -1,5 +1,6 @@
 # CLERO (CLimate Emulator for ROcky exoplanets)
 
+![Tests](https://github.com/edstevenson/clero/actions/workflows/tests.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)
