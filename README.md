@@ -101,44 +101,52 @@ There's also a walk-through notebook at `clero/demos/quickstart.ipynb`.
 
 ## API
 
-Full reference (generated from the docstrings): https://edstevenson.github.io/clero/
+Full reference (generated from the docstrings): [https://edstevenson.github.io/clero/](https://edstevenson.github.io/clero/)
 
 `Emulator` (prediction):
 
+
 | call                          | returns                                                                                   | output type                                                    |
 | ----------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `predict(inputs)`             | predict the climate (mean of climate distribution)                                     | `dict[str, ndarray]`, each dict value is `(32, 64)`            |
-| `sample(inputs, n_samples=…)` | draws from climate distribution                                                        | `dict[str, ndarray]`, each dict value is `(n_samples, 32, 64)` |
+| `predict(inputs)`             | predict the climate (mean of climate distribution)                                        | `dict[str, ndarray]`, each dict value is `(32, 64)`            |
+| `sample(inputs, n_samples=…)` | draws from climate distribution                                                           | `dict[str, ndarray]`, each dict value is `(n_samples, 32, 64)` |
 | `to_physical` / `to_model`    | move a field dict between physical and model space (see [UNCERTAINTY.md](UNCERTAINTY.md)) | `dict[str, ndarray]`, shapes preserved                         |
 | `output_names`, `grid_shape`  | the 53 field names; `(32, 64)`                                                            | `list[str]`; `tuple[int, int]`                                 |
 
+
 Top-level helpers:
 
-| name                                | what                                                                                                        |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `EARTH`, `M_EARTH`, `TRAPPIST1E`    | preset input dicts (see [Quickstart](#quickstart))                                                          |
-| `CORE_DOMAIN`, `EXTENDED_DOMAIN`    | `(low, high)` per input, from [SCOPE.md](SCOPE.md)                                                          |
-| `orbital_period(F_star, T_star)`    | tidally locked rotation period in days from flux and stellar temperature, via empirical stellar relations; prefer a measured period when available |
+
+| name                             | what                                                                                                                                               |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EARTH`, `M_EARTH`, `TRAPPIST1E` | preset input dicts (see [Quickstart](#quickstart))                                                                                                 |
+| `CORE_DOMAIN`, `EXTENDED_DOMAIN` | `(low, high)` per input, from [SCOPE.md](SCOPE.md)                                                                                                 |
+| `orbital_period(F_star, T_star)` | tidally locked rotation period in days from flux and stellar temperature, via empirical stellar relations; prefer a measured period when available |
+
 
 `clero.climate_analysis` (helper functions for analyzing climates):
 
-| group                | functions                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| scalar summaries     | `summarize_outputs`, `summary_table`, `global_mean`, `dayside_mean`, `nightside_mean`                   |
-| vertical structure   | `vertical_profile`, `profile_table`, `profile_stats`, `stack_levels`, `pressure_levels`                 |
-| physical diagnostics | `water_vapor_path`, `net_toa_radiation`, `ice_fraction`, `bond_albedo`                                  |
-| maps & grids         | `surface_map`, `zonal_mean`, `meridional_mean`, `map_records`, `grid_records`                           |
+
+| group                | functions                                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| scalar summaries     | `summarize_outputs`, `summary_table`, `global_mean`, `dayside_mean`, `nightside_mean`                                       |
+| vertical structure   | `vertical_profile`, `profile_table`, `profile_stats`, `stack_levels`, `pressure_levels`                                     |
+| physical diagnostics | `water_vapor_path`, `net_toa_radiation`, `ice_fraction`, `bond_albedo`                                                      |
+| maps & grids         | `surface_map`, `zonal_mean`, `meridional_mean`, `map_records`, `grid_records`                                               |
 | plots                | `field_map`, `ice_fraction_map`, `net_radiation_map`, `wind_map`, `wind_streamlines`, `zonal_cross_section`, `plot_profile` |
-| axes & weights       | `latitude_centers`, `longitude_centers`, `latitude_edges`, `longitude_edges`, `latitude_weights`        |
-| io                   | `write_csv`                                                                                             |
+| axes & weights       | `latitude_centers`, `longitude_centers`, `latitude_edges`, `longitude_edges`, `latitude_weights`                            |
+| io                   | `write_csv`                                                                                                                 |
+
 
 e.g.,
 
 ```python
 from clero.climate_analysis import stack_levels
-climate = emu.predict(inputs)
-T = stack_levels(climate, "temperature")  # per-level fields -> one (10, 32, 64) array
+climate_mean = emu.predict(inputs)
+T = stack_levels(climate_mean, "temperature")  # per-level fields -> one (10, 32, 64) array
 ```
+
+
 
 ## Batches and GPU
 
@@ -169,3 +177,4 @@ If you use CLERO, please cite the paper:
 ```bibtex
 // TODO: add correct CLERO paper citation here when available
 ```
+

@@ -36,6 +36,7 @@ def predict_gplfr_batch_torch(
     space: str = "physical",
     return_variance: bool = False,
     split_variance: bool = False,
+    include_residual: bool = False,
     batch_size: int | None = 512,
     fields: list[str] | tuple[str, ...] | None = None,
     unpack: bool = True,
@@ -50,7 +51,7 @@ def predict_gplfr_batch_torch(
             xb = _tensor(torch, x_raw[start:stop], device, dtype)
             sb = _tensor(torch, s[start:stop], device, "long")
             if return_variance:
-                arrays = _predict_mean_and_variance(bundle, state, xb, sb, split_variance)
+                arrays = _predict_mean_and_variance(bundle, state, xb, sb, split_variance, include_residual)
                 parts.append(tuple(_pack_batch(bundle, arr.cpu().numpy(), fields, unpack) for arr in arrays))
             else:
                 values = _predict_grid(bundle, state, xb, sb, space)
@@ -107,10 +108,11 @@ def _predict_grid(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, sp
     return grid if space == "model" else _inverse_preprocess_outputs(bundle, grid, x_raw)
 
 
-def _predict_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, split: bool = False):
+def _predict_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, split: bool = False, include_residual: bool = False):
     x = _transform_inputs(bundle, x_raw)
     z_mean, z_var = _latent_stats(state, x, s)
-    y_mean, *y_vars = _decoder_mean_and_variance(bundle, state, z_mean, z_var, split)
+    y_mean, coherent, residual = _decoder_mean_and_variance(bundle, state, z_mean, z_var)
+    y_vars = (coherent, residual) if split else (coherent + residual if include_residual else coherent,)
     if "linear_Gamma" in state:
         y_mean = y_mean + _torch().einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     mask = state["sh_mask"][None]
@@ -237,7 +239,7 @@ def _decoder_sample(bundle: _CheckpointBundle, state: dict[str, Any], z, generat
     return out / state["alpha_sqrt"][None, None]
 
 
-def _decoder_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any], z, z_var, split: bool = False):
+def _decoder_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any], z, z_var):
     torch = _torch()
     n, n_coeffs, n_fields = z.shape[0], int(state["n_coeffs"].item()), int(state["n_fields"].item())
     mean = torch.zeros((n, n_coeffs, n_fields), device=z.device, dtype=z.dtype)
@@ -253,9 +255,7 @@ def _decoder_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any],
         var_coherent[:, a[:, None], f[None, :]] = coherent
         var_residual[:, a[:, None], f[None, :]] = residual
     alpha_sq = torch.square(state["alpha_sqrt"])[None]
-    if split:
-        return mean / torch.sqrt(alpha_sq), var_coherent / alpha_sq, var_residual / alpha_sq
-    return mean / torch.sqrt(alpha_sq), (var_coherent + var_residual) / alpha_sq
+    return mean / torch.sqrt(alpha_sq), var_coherent / alpha_sq, var_residual / alpha_sq
 
 
 def _decoder_group_variance(state: dict[str, Any], i: int, v, v_var, mu_w, sigma_sq: float):

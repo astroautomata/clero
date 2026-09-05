@@ -117,12 +117,14 @@ def test_private_gplfr_bundle_predicts_mean_and_variance(tmp_path: Path) -> None
     bundle = _load_checkpoint(bundle_dir)
     items = [{"F_star": 1000.0, "GCM": "UM"}]
     mean, variance = predict_gplfr_batch(bundle, items, space="model", return_variance=True)
+    _, total = predict_gplfr_batch(bundle, items, space="model", return_variance=True, include_residual=True)
     mean_vec, variance_vec = predict_gplfr_batch(bundle, items, space="model", return_variance=True, unpack=False)
 
     assert_allclose(mean["surface_temperature"], np.full((1, 2, 2), 6.0), rtol=1.0e-6, atol=1.0e-6)
-    assert_allclose(variance["surface_temperature"], np.full((1, 2, 2), 5.25), rtol=1.0e-6, atol=1.0e-6)
+    assert_allclose(variance["surface_temperature"], np.full((1, 2, 2), 0.9), rtol=1.0e-6, atol=1.0e-6)  # coherent only by default
+    assert_allclose(total["surface_temperature"], np.full((1, 2, 2), 5.25), rtol=1.0e-6, atol=1.0e-6)  # + white residual
     assert_allclose(mean_vec, np.full((1, 4), 6.0), rtol=1.0e-6, atol=1.0e-6)
-    assert_allclose(variance_vec, np.full((1, 4), 5.25), rtol=1.0e-6, atol=1.0e-6)
+    assert_allclose(variance_vec, np.full((1, 4), 0.9), rtol=1.0e-6, atol=1.0e-6)
 
 
 def test_variance_requires_model_space(tmp_path: Path) -> None:
@@ -141,13 +143,13 @@ def test_public_emulator_uses_internal_default_bundle(monkeypatch, tmp_path: Pat
     inputs = {"F_star": 1000.0, "GCM": "UM"}
     emulator = Emulator()
     pred = emulator.predict(inputs)
-    mean, variance = emulator.predict(inputs, space="model", return_variance=True)
+    mean, variance = emulator.predict(inputs, space="model", return_variance=True, include_residual=True)
     samples = emulator.sample(inputs, n_samples=8, seed=0)
-    _, variance_vec = emulator.predict(inputs, space="model", return_variance=True, unpack=False)
+    _, variance_vec = emulator.predict(inputs, space="model", return_variance=True, include_residual=True, unpack=False)
     mean_vec = emulator.predict(inputs, unpack=False)
     batch_mean = emulator.predict([inputs, inputs], unpack=False)
     batch_mean_from_columns = emulator.predict({"F_star": [1000.0, 1000.0], "GCM": ["UM", "um"]}, unpack=False)
-    batch_mean_dict, batch_variance_dict = emulator.predict([inputs, inputs], space="model", return_variance=True, fields=["surface_temperature"])
+    batch_mean_dict, batch_variance_dict = emulator.predict([inputs, inputs], space="model", return_variance=True, include_residual=True, fields=["surface_temperature"])
 
     assert_allclose(pred["surface_temperature"], np.full((2, 2), 6.0), rtol=1.0e-6, atol=1.0e-6)
     assert_allclose(mean["surface_temperature"], np.full((2, 2), 6.0), rtol=1.0e-6, atol=1.0e-6)
@@ -191,10 +193,13 @@ def test_sample_marginal_variance_matches_predict_variance(monkeypatch, tmp_path
     inputs = {"F_star": 1000.0, "GCM": "UM"}
     emulator = Emulator()
 
-    _, variance = emulator.predict(inputs, space="model", return_variance=True)
-    samples = emulator.sample(inputs, n_samples=4096, seed=1, sample_residual=True)["surface_temperature"]
+    _, coherent = emulator.predict(inputs, space="model", return_variance=True)
+    _, total = emulator.predict(inputs, space="model", return_variance=True, include_residual=True)
+    samples = emulator.sample(inputs, n_samples=4096, seed=1)["surface_temperature"]
+    full = emulator.sample(inputs, n_samples=4096, seed=1, sample_residual=True)["surface_temperature"]
 
-    assert_allclose(samples.var(axis=0, ddof=1), variance["surface_temperature"], rtol=0.08, atol=0.0)
+    assert_allclose(samples.var(axis=0, ddof=1), coherent["surface_temperature"], rtol=0.08, atol=0.0)  # defaults mirror
+    assert_allclose(full.var(axis=0, ddof=1), total["surface_temperature"], rtol=0.08, atol=0.0)  # residual flags mirror
 
 
 def test_predict_split_variance_components(monkeypatch, tmp_path: Path) -> None:
@@ -204,9 +209,11 @@ def test_predict_split_variance_components(monkeypatch, tmp_path: Path) -> None:
 
     mean, coherent, residual = emulator.predict(inputs, space="model", split_variance=True)
     mean_only = emulator.predict(inputs, space="model")
-    _, total = emulator.predict(inputs, space="model", return_variance=True)
+    _, default = emulator.predict(inputs, space="model", return_variance=True)
+    _, total = emulator.predict(inputs, space="model", return_variance=True, include_residual=True)
 
     assert_allclose(mean["surface_temperature"], mean_only["surface_temperature"], rtol=0.0, atol=0.0)
+    assert_allclose(default["surface_temperature"], coherent["surface_temperature"], rtol=0.0, atol=0.0)
     assert_allclose(coherent["surface_temperature"], np.full((2, 2), 0.9), rtol=1.0e-6, atol=1.0e-6)
     assert_allclose(residual["surface_temperature"], np.full((2, 2), 4.35), rtol=1.0e-6, atol=1.0e-6)
     assert_allclose(coherent["surface_temperature"] + residual["surface_temperature"], total["surface_temperature"], rtol=1.0e-6, atol=1.0e-6)

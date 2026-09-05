@@ -63,6 +63,7 @@ class Emulator:
         space: str = "physical",
         return_variance: bool = False,
         split_variance: bool = False,
+        include_residual: bool = False,
         device: str | None = None,
         batch_size: int | None = None,
         fields: list[str] | tuple[str, ...] | None = None,
@@ -74,13 +75,13 @@ class Emulator:
             inputs: a planet dict (T_star, F_star, radius, gravity, P_rot, P0, CO2, CH4, GCM),
                 or a batch as a list of such dicts or a column dict (e.g. {"F_star": [...], "GCM": [...]}).
             space: "physical" (default) or "model".
-            return_variance: also return the diagonal predictive variance. Requires space="model"
-                (variance is not meaningful in physical space for nonlinearly-transformed fields).
-            split_variance: return the two components of the per-cell variance separately
-                (implies ``return_variance``): the coherent part (latent uncertainty through the
-                decoder — spatially structured) and the residual part (decoder-weight uncertainty
-                + observation noise — spatially white; the term ``sample_residual`` controls in
-                ``sample``). total = coherent + residual.
+            return_variance: also return the per-cell predictive variance (spatially coherent part
+                only, matching ``sample``'s default draws). Requires space="model" (variance is not
+                meaningful in physical space for nonlinearly-transformed fields).
+            include_residual: add the spatially white residual term to the variance, the analogue of
+                ``sample_residual=True`` (see UNCERTAINTY.md).
+            split_variance: return the coherent and residual variances separately (implies
+                ``return_variance``); total = coherent + residual.
             device / batch_size: override device and chunk size for this call.
             fields: subset of output fields. None means all.
             unpack: if True, dict(s) keyed by field name; else flat arrays.
@@ -94,11 +95,11 @@ class Emulator:
         items = inputs if batch else [inputs]
         device = self.device if device is None else device
         if device == "cpu":
-            result = predict_gplfr_batch(self._bundle, items, space=space, return_variance=return_variance, split_variance=split_variance, batch_size=batch_size or 256, fields=fields, unpack=unpack)
+            result = predict_gplfr_batch(self._bundle, items, space=space, return_variance=return_variance, split_variance=split_variance, include_residual=include_residual, batch_size=batch_size or 256, fields=fields, unpack=unpack)
         else:
             from ._torch_runtime import predict_gplfr_batch_torch
 
-            result = predict_gplfr_batch_torch(self._bundle, items, state=self._torch_state(device), device=device, dtype=self.dtype, space=space, return_variance=return_variance, split_variance=split_variance, batch_size=batch_size or 512, fields=fields, unpack=unpack)
+            result = predict_gplfr_batch_torch(self._bundle, items, state=self._torch_state(device), device=device, dtype=self.dtype, space=space, return_variance=return_variance, split_variance=split_variance, include_residual=include_residual, batch_size=batch_size or 512, fields=fields, unpack=unpack)
         return result if batch else _drop_batch_axis(result)
 
     def sample(
@@ -114,31 +115,27 @@ class Emulator:
         fields: list[str] | tuple[str, ...] | None = None,
         unpack: bool = True,
     ):
-        """Full-field samples for one planet or a batch.
+        """Draw climates from CLERO's predictive distribution for one planet or a batch.
 
-        With ``sample_residual=False`` (default), draws are spatially coherent: the GP latent posterior is
-        sampled and decoded with the posterior-mean decoder. With ``sample_residual=True``
-        each draw also realizes the fitted residual term (decoder-weight uncertainty +
-        observation noise), drawn iid per spherical-harmonic coefficient — spatially
-        white. The residual is calibrated per cell but carries no credible spatial structure, so unless you need cell-wise variances, leave it off.
-        (The variance returned by ``predict`` always includes the
-        residual term.) 
-        To summarise samples for a nonlinearly-transformed field, draw in
-        space="model", reduce, then map back with ``to_physical``.
+        Each draw is a complete, spatially coherent set of climate fields, so any
+        quantity you compute from a draw (a global mean, an ice fraction, a map) inherits
+        a calibrated uncertainty when you repeat it across draws. See UNCERTAINTY.md for
+        the spatially white residual (``sample_residual``) and for summarising humidity
+        and cloud fraction in ``space="model"``.
 
         Args:
             inputs: a planet dict or a batch (see ``predict``).
             n_samples: number of draws.
-            seed: local random seed; None uses fresh randomness.
-            sample_residual: include the spatially-white residual term in each draw (default False).
+            seed: random seed; None uses fresh randomness.
+            sample_residual: add the spatially white residual scatter to each draw (default False).
             space: "physical" (default) or "model".
             device / fields / unpack: as in ``predict``.
             batch_size: planets per chunk, as in ``predict``. Peak memory scales as
-                batch_size * n_samples here, so lower batch_size when raising n_samples.
+                batch_size * n_samples, so lower batch_size when raising n_samples.
 
         Returns:
             A field dict (or flat array) with the sample axis first. Single-planet inputs
-            drop the batch axis, giving (n_samples, *grid) per field.
+            drop the batch axis, giving (n_samples, 32, 64) per field.
         """
         batch = _is_batch(inputs)
         items = inputs if batch else [inputs]

@@ -39,6 +39,7 @@ def predict_gplfr_batch(
     space: str = "physical",
     return_variance: bool = False,
     split_variance: bool = False,
+    include_residual: bool = False,
     batch_size: int | None = 256,
     fields: list[str] | tuple[str, ...] | None = None,
     unpack: bool = True,
@@ -55,7 +56,7 @@ def predict_gplfr_batch(
         ])
     parts = []
     for start, stop in _chunks(x_raw.shape[0], batch_size):
-        arrays = _predict_transformed_grid_mean_and_variance_arrays(bundle, x_raw[start:stop], s[start:stop], split_variance)
+        arrays = _predict_transformed_grid_mean_and_variance_arrays(bundle, x_raw[start:stop], s[start:stop], split_variance, include_residual)
         parts.append(tuple(_pack_batch(bundle, arr, fields, unpack) for arr in arrays))
     return tuple(_concat_batch(list(group)) for group in zip(*parts))
 
@@ -151,12 +152,13 @@ def _predict_grid_arrays(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.nda
     return grid if space == "model" else _inverse_preprocess_outputs(bundle, grid, x_raw)
 
 
-def _predict_transformed_grid_mean_and_variance_arrays(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.ndarray, split: bool = False) -> tuple[np.ndarray, ...]:
+def _predict_transformed_grid_mean_and_variance_arrays(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.ndarray, split: bool = False, include_residual: bool = False) -> tuple[np.ndarray, ...]:
     state = _state(bundle)
     _check_variance_enabled(state)
     x = _transform_inputs(bundle, x_raw)
     z_mean, z_var = _latent_stats(state, x, s)
-    y_mean, *y_vars = _decoder_mean_and_variance(bundle, state, z_mean, z_var, split)
+    y_mean, coherent, residual = _decoder_mean_and_variance(bundle, state, z_mean, z_var)
+    y_vars = (coherent, residual) if split else (coherent + residual if include_residual else coherent,)
     if "linear_Gamma" in state:
         y_mean = y_mean + np.einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     mask = state.get("sh_mask", np.ones(y_mean.shape[1:], dtype=bool))[None]
@@ -419,7 +421,8 @@ def _decoder_sample(bundle: _CheckpointBundle, state: dict[str, np.ndarray], z: 
     return out / state.get("alpha_sqrt", np.ones((n_coeffs, n_fields), dtype=np.float64))[None, None]
 
 
-def _decoder_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, np.ndarray], z: np.ndarray, z_var: np.ndarray, split: bool = False) -> tuple[np.ndarray, ...]:
+def _decoder_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, np.ndarray], z: np.ndarray, z_var: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Spectral-coefficient mean and its (coherent, residual) variance parts; total = coherent + residual."""
     n, n_coeffs, n_fields = int(z.shape[0]), int(state["n_coeffs"].item()), int(state["n_fields"].item())
     mean = np.zeros((n, n_coeffs, n_fields), dtype=np.float64)
     var_coherent = np.zeros_like(mean)
@@ -436,9 +439,7 @@ def _decoder_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, np.nd
         var_coherent[:, a[:, None], f[None, :]] = coherent
         var_residual[:, a[:, None], f[None, :]] = residual
     alpha_sq = np.square(state.get("alpha_sqrt", np.ones((n_coeffs, n_fields), dtype=np.float64)))[None]
-    if split:
-        return mean / np.sqrt(alpha_sq), var_coherent / alpha_sq, var_residual / alpha_sq
-    return mean / np.sqrt(alpha_sq), (var_coherent + var_residual) / alpha_sq
+    return mean / np.sqrt(alpha_sq), var_coherent / alpha_sq, var_residual / alpha_sq
 
 
 def _decoder_group_variance(
