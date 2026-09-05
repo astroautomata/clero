@@ -5,15 +5,15 @@
 [![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)](https://edstevenson.github.io/clero/)
 [![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b.svg)](https://arxiv.org/)  <!-- TODO: replace with the paper's arXiv ID at submission -->
 
-[API documentation](https://edstevenson.github.io/clero/) · [Scope](SCOPE.md) · [Uncertainty](UNCERTAINTY.md) · [Demos](demos/)
-
 ## What it is
 
 CLERO is an exoGCM emulator that takes a hypothetical planet as input and outputs its 3D steady-state climate. It targets tidally locked ocean-covered rocky planets in or near the habitable zone; see [SCOPE.md](SCOPE.md) for detail on its scope of validity.
 
 CLERO computes a probability distribution over climates: `predict` returns its mean (our best point estimate of the climate) and `sample` returns draws from the distribution (see [UNCERTAINTY.md](UNCERTAINTY.md)).
 
-CLERO is based on Gaussian-process latent factor regression ([GPLFR](https://github.com/edstevenson/GPLFR)) and is trained on [ThousandWorlds](https://github.com/astroautomata/ThousandWorlds). 
+CLERO is based on Gaussian-process latent factor regression ([GPLFR](https://github.com/edstevenson/GPLFR)) and is trained on [ThousandWorlds](https://github.com/astroautomata/ThousandWorlds).
+
+Worked examples are in [demos/](demos/).
 
 ## Inputs
 
@@ -104,7 +104,7 @@ mean = emu.predict(M_EARTH)                    # Earth-like but around a 2600 K 
 mean = emu.predict({**TRAPPIST1E, "CO2": 0.0, "CH4": 0.0})    # TRAPPIST-1e with an N₂-only atmosphere 
 ```
 
-There's also a walk-through notebook at `clero/demos/quickstart.ipynb`.
+There's also a walk-through notebook, [demos/quickstart.ipynb](demos/quickstart.ipynb).
 
 ## API
 
