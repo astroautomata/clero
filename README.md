@@ -6,7 +6,7 @@
 ![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)
 ![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b.svg)  
 
-## What is CLERO
+## What is it
 
 CLERO is an exoGCM emulator that takes a hypothetical planet as input and outputs its 3D steady-state climate. It targets tidally locked ocean-covered rocky planets in or near the habitable zone; see [SCOPE.md](SCOPE.md) for detail on its scope of validity.
 
