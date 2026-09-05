@@ -1,6 +1,11 @@
 # CLERO (CLimate Emulator for ROcky exoplanets)
 
-[API documentation](https://edstevenson.github.io/clero/) · [Scope of validity](SCOPE.md) · [Uncertainty](UNCERTAINTY.md) · [Demos](demos/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+[![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)](https://edstevenson.github.io/clero/)
+[![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b.svg)](https://arxiv.org/)  <!-- TODO: replace with the paper's arXiv ID at submission -->
+
+[API documentation](https://edstevenson.github.io/clero/) · [Scope](SCOPE.md) · [Uncertainty](UNCERTAINTY.md) · [Demos](demos/)
 
 ## What it is
 
