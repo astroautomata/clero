@@ -1,7 +1,8 @@
-"""Input domains from SCOPE.md (single source of truth; the SCOPE.md table is tested against these).
+"""The input ranges from SCOPE.md, as `{input: (low, high)}` dicts in the units used by `Emulator`.
 
-``CORE_DOMAIN`` is where the training simulations are densest and CLERO was tuned;
-``EXTENDED_DOMAIN`` is the full training-set extent. Units match the ``Emulator`` inputs.
+`CORE_DOMAIN` is where the training simulations are densest and CLERO is most reliable;
+`EXTENDED_DOMAIN` is the full extent of the training set. Inputs outside the extended
+domain emit a `UserWarning`.
 """
 
 CORE_DOMAIN = {

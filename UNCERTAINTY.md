@@ -8,7 +8,13 @@
 - If you just want a prediction, use physical space. 
 - If you need summary statistics (means, standard deviations, etc.), you should computed these in *model space* first, and then map back to natural units with `to_physical`, or you will get skewed summaries.
 
-**Example: summarise humidity in dex**
+## Getting uncertainty: analytic variance or samples
+
+- `predict(..., space="model", return_variance=True)` returns, alongside the mean, the variance of each field at every grid cell (a `(32, 64)` array), computed analytically. Because it is per cell, it says nothing about how cells vary together, so it cannot give the uncertainty of anything that combines cells, such as a global mean; use samples for that. It is only available in model space, for the reason given above.
+- `sample(...)` returns draws from the climate distribution.
+- `sample(..., sample_residual=True)` adds a spatially white residual term to each draw, so per-cell spreads match the variance from `predict`. This is mainly for quantitative comparison/validation against other climate predictions like from GCMs, and is probably rarely useful otherwise. Details in the paper's Methods.
+
+## Example: summarise humidity in dex
 
 Analytically:
 
@@ -36,10 +42,6 @@ model = emu.to_model(physical_fields, inputs)      # physical units -> model spa
 q = emu.to_physical("specific_humidity_3", model_q, inputs)   # one field -> one array
 ```
 
-## Three ways to get uncertainty
 
-- `predict(..., space="model", return_variance=True)` also returns, for every field, the per-cell variance of the climate distribution (a `(32, 64)` array matching the mean), computed exactly rather than from samples. It carries no covariance between cells, so it cannot give the uncertainty of an area mean. It raises a `ValueError` in physical space, for the reason in 'Two spaces'.
-- `sample(...)` returns draws from the climate distribution.
-- Both of the above exclude a spatially white residual term (per-cell scatter with no spatial structure) by default. `predict(..., include_residual=True)` and `sample(..., sample_residual=True)` add it, and the two remain consistent with each other. This is mainly for quantitative cell-by-cell comparison against other climate predictions like GCM output, and is probably rarely useful otherwise. `predict(..., split_variance=True)` returns the coherent and residual variances separately. Details in the paper's Methods.
 
 

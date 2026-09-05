@@ -1,5 +1,7 @@
 # CLERO (CLimate Emulator for ROcky exoplanets)
 
+[API documentation](https://edstevenson.github.io/clero/) · [Scope of validity](SCOPE.md) · [Uncertainty](UNCERTAINTY.md) · [Demos](demos/)
+
 ## What it is
 
 CLERO is an exoGCM emulator that takes a hypothetical planet as input and outputs its 3D steady-state climate. It targets tidally locked ocean-covered rocky planets in or near the habitable zone; see [SCOPE.md](SCOPE.md) for detail on its scope of validity.

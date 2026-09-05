@@ -1,4 +1,4 @@
-"""map helpers for 2D predicted climate fields."""
+"""Maps and plots of predicted climate fields."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def surface_map(
     lat: np.ndarray | None = None,
     lon: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
-    """Pull a named 2D field out of a prediction dict (or pass an array directly) with its lat/lon axes."""
+    """A 2D field together with its latitude and longitude axes, as a dict with keys lat, lon, values. Takes a climate dict plus a field name, or a field array."""
     values = _surface_array(outputs_or_field, field)
     return {
         "lat": _axis(lat, values.shape[0], latitude_centers),
@@ -58,13 +58,13 @@ def map_records(
     lon: np.ndarray | None = None,
     value_name: str | None = None,
 ) -> list[dict[str, float]]:
-    """Flatten a surface field to grid-cell records (see grid_records)."""
+    """One row per grid cell for a 2D field (see `grid_records`). Takes a climate dict plus a field name, or a field array."""
     name = value_name or field or "value"
     return _grid_records(_surface_array(outputs_or_field, field), lat=lat, lon=lon, value_name=name)
 
 
 def zonal_mean(field: np.ndarray) -> np.ndarray:
-    """Mean over longitude: a (lat, lon) field -> (lat,), a (level, lat, lon) stack -> (level, lat)."""
+    """Mean over longitude: a `(lat, lon)` field gives `(lat,)`, a `(level, lat, lon)` stack gives `(level, lat)`."""
     array = np.asarray(field, dtype=float)
     if array.ndim not in (2, 3):
         raise ValueError(f"expected a 2D field or 3D variable stack, got shape {array.shape}")
@@ -72,7 +72,7 @@ def zonal_mean(field: np.ndarray) -> np.ndarray:
 
 
 def meridional_mean(field: np.ndarray, lat: np.ndarray) -> np.ndarray:
-    """Area-weighted mean over latitude (cos(lat) weights)."""
+    """Area-weighted (cos lat) mean over latitude of a `(lat, lon)` field, giving `(lon,)`."""
     values = _as_surface(field)
     weights = np.cos(np.deg2rad(np.asarray(lat, dtype=float)))
     return np.average(values, axis=0, weights=weights / weights.sum())
@@ -92,22 +92,22 @@ def field_map(
     units: str | None = None,
     **kwargs,
 ):
-    """Quick pcolormesh of a 2D surface field. Requires matplotlib.
+    """Plot a 2D field as a latitude–longitude map, substellar point at the centre.
 
     Args:
-        outputs_or_field: a prediction dict (then field is required) or a 2D array.
-        field: 2D field name to extract from a prediction dict.
-        lat / lon: axes in degrees; defaults to latitude_centers / longitude_centers.
-        ax: existing matplotlib axes to draw on, else a new figure is made.
-        cmap: matplotlib colormap name; defaults to a per-variable convention.
-        colorbar: whether to add a colorbar.
+        outputs_or_field: a climate dict (then `field` is required) or a `(lat, lon)` array.
+        field: name of the field to plot from a climate dict.
+        lat, lon: axes in degrees; default to the CLERO grid.
+        ax: existing matplotlib axes to draw on; otherwise a new figure is made.
+        cmap: matplotlib colormap name; defaults to a per-variable choice.
+        colorbar: whether to add a colorbar (default True).
         title: plot title.
         units: colorbar label; defaults to a per-variable label.
-        **kwargs: forwarded to pcolormesh (e.g. vmin, vmax, norm) — useful for
+        **kwargs: forwarded to `pcolormesh` (e.g. `vmin`, `vmax`, `norm`), useful for
             sharing a colour scale across panels.
 
     Returns:
-        (fig, ax) pair.
+        The `(fig, ax)` pair.
     """
     import matplotlib.pyplot as plt
 
@@ -135,11 +135,10 @@ def ice_fraction_map(
     title: str | None = None,
     **kwargs,
 ):
-    """Surface ice map: cells colder than `freeze_K` count as ice.
+    """Map of surface ice, where cells colder than `freeze_K` count as ice.
 
-    Coloured blue (open water) to white (ice). Accepts a prediction dict (uses
-    `surface_temperature`) or a 2D temperature array. Forwards `lat`/`lon`/`ax`/
-    `colorbar` and pcolormesh kwargs to `field_map`.
+    Blue is open water and white is ice. Takes a climate dict (uses `surface_temperature`)
+    or a surface temperature array. Other arguments are passed to `field_map`.
     """
     ts = outputs_or_field["surface_temperature"] if isinstance(outputs_or_field, dict) else outputs_or_field
     ice = (_as_surface(ts) < freeze_K).astype(float)
@@ -153,11 +152,11 @@ def net_radiation_map(
     title: str | None = None,
     **kwargs,
 ):
-    """Net top-of-atmosphere radiation (ASR - OLR).
+    """Map of net top-of-atmosphere radiation, `ASR - OLR`.
 
-    Positive is net heating (day side), negative net cooling (night side), on a
-    diverging scale centred at zero. Accepts a prediction dict (uses `asr` / `olr`)
-    or a 2D net-flux array.
+    Positive is net heating (dayside), negative is net cooling (nightside), on a
+    diverging colour scale centred at zero. Takes a climate dict (uses `asr` and `olr`)
+    or a net-flux array. Other arguments are passed to `field_map`.
     """
     if isinstance(outputs_or_field, dict):
         net = _as_surface(outputs_or_field["asr"]) - _as_surface(outputs_or_field["olr"])
@@ -183,14 +182,14 @@ def wind_map(
     colorbar: bool = True,
     title: str | None = None,
 ):
-    """Wind vectors at a model level, quivered over a scalar background field. Requires matplotlib.
+    """Wind arrows at one model level drawn over a background field.
 
     Args:
-        outputs: prediction dict with ``u_{level}`` / ``v_{level}`` and the ``scalar`` field.
-        level: model level for the wind (0 = lowest / near-surface).
-        scalar: background field name.
-        step: quiver stride (every ``step``-th grid cell).
-        See `field_map` for the remaining styling arguments.
+        outputs: a climate dict (uses `u_{level}`, `v_{level}` and the `scalar` field).
+        level: model level for the wind, 0 being the lowest (default 0).
+        scalar: name of the background field (default "surface_temperature").
+        step: draw an arrow every `step` grid cells (default 2).
+        lat, lon, ax, cmap, colorbar, title: as in `field_map`.
     """
     import matplotlib.pyplot as plt
 
@@ -229,11 +228,11 @@ def wind_streamlines(
     colorbar: bool = True,
     title: str | None = None,
 ):
-    """Wind streamlines coloured by speed at a model level (no background field). Requires matplotlib.
+    """Wind streamlines at one model level, coloured by wind speed.
 
-    Streamlines on a plain lon-lat axis; the Gaussian grid is regridded to uniform
-    latitude (streamplot needs even spacing) and the longitude seam is closed so lines
-    wrap across +/-180.
+    The wind is interpolated to evenly spaced latitudes (which streamlines require) and
+    wrapped across ±180° longitude. `level`, `ax`, `cmap`, `colorbar` and `title` are as
+    in `wind_map`; `density` controls how many streamlines are drawn.
     """
     import matplotlib.pyplot as plt
 
@@ -272,11 +271,11 @@ def zonal_cross_section(
     title: str | None = None,
     contour_levels: int = 20,
 ):
-    """Latitude-pressure cross-section (zonal mean) of a 3D variable. Requires matplotlib.
+    """Latitude–pressure cross-section of the zonal mean of a multi-level variable.
 
-    Pass P0 (bar) for a pressure axis (otherwise a model-level index). For temperature
-    with P0 given, the section extends to the surface at P0 (zonal-mean
-    surface_temperature) unless include_surface=False.
+    Pass `P0` (bar) for a pressure axis; otherwise the vertical axis is the model level
+    index. For temperature with `P0` given, the section extends down to the surface using
+    `surface_temperature`, unless `include_surface=False`.
     """
     import matplotlib.pyplot as plt
 

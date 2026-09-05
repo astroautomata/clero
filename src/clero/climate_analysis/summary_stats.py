@@ -1,4 +1,4 @@
-"""small summary stats for predicted climate fields and variable stacks."""
+"""Area means and characteristic profiles."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ def summarize_outputs(
     outputs: dict[str, Any],
     lat: np.ndarray,
 ) -> dict[str, dict[str, float | np.ndarray]]:
-    """Per-output stats: min/max, plus map means for 2D fields and profile stats for 3D variables."""
+    """Summary statistics for every entry of a climate dict: min and max, plus dayside, nightside and global means for 2D fields and `profile_stats` for `(level, lat, lon)` stacks."""
     summary: dict[str, dict[str, float | np.ndarray]] = {}
     for name, value in outputs.items():
         array = np.asarray(value, dtype=float)
@@ -34,13 +34,13 @@ def summarize_outputs(
 
 
 def global_mean(field: np.ndarray, lat: np.ndarray) -> float:
-    """Area-weighted global mean of a 2D (lat, lon) field."""
+    """Area-weighted global mean of a `(lat, lon)` field."""
     array = np.asarray(field, dtype=float)
     return float(np.average(array.mean(axis=1), weights=latitude_weights(lat)))
 
 
 def dayside_mean(field: np.ndarray, lat: np.ndarray) -> float:
-    """Area-weighted mean over the dayside longitudes of a 2D (lat, lon) field."""
+    """Area-weighted mean over the dayside (the half of the grid centred on the substellar point) of a `(lat, lon)` field."""
     array = np.asarray(field, dtype=float)
     q1, q3 = array.shape[1] // 4, array.shape[1] * 3 // 4
     if q1 == q3:
@@ -49,7 +49,7 @@ def dayside_mean(field: np.ndarray, lat: np.ndarray) -> float:
 
 
 def nightside_mean(field: np.ndarray, lat: np.ndarray) -> float:
-    """Area-weighted mean over the nightside longitudes of a 2D (lat, lon) field."""
+    """Area-weighted mean over the nightside (the half of the grid centred on the antistellar point) of a `(lat, lon)` field."""
     array = np.asarray(field, dtype=float)
     q1, q3 = array.shape[1] // 4, array.shape[1] * 3 // 4
     if q1 == q3:
@@ -58,7 +58,7 @@ def nightside_mean(field: np.ndarray, lat: np.ndarray) -> float:
 
 
 def profile_stats(variable: np.ndarray, lat: np.ndarray) -> dict[str, np.ndarray]:
-    """Substellar, antistellar, both terminator, and global-mean profiles for a 3D variable stack."""
+    """Characteristic vertical profiles of a `(level, lat, lon)` stack: substellar, antistellar, east and west terminator columns, and the area-weighted global mean. Returned as a dict keyed by profile name."""
     array = np.asarray(variable, dtype=float)
     if array.ndim != 3:
         raise ValueError(f"expected (level, lat, lon), got shape {array.shape}")

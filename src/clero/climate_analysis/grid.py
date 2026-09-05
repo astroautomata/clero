@@ -1,4 +1,4 @@
-"""latitude, longitude, and grid-record helpers for climate-analysis outputs."""
+"""Latitude and longitude axes, area weights, and grid-cell export for the 32×64 grid."""
 
 from __future__ import annotations
 
@@ -7,21 +7,21 @@ from numpy.polynomial.legendre import leggauss
 
 
 def latitude_centers(n_lat: int) -> np.ndarray:
-    """Cell-centred Gaussian latitudes in degrees for the CLERO/T21 grid."""
+    """Latitude of each row centre in degrees (Gaussian latitudes; CLERO uses `n_lat=32`)."""
     mu, _ = leggauss(n_lat)
     return np.degrees(np.arcsin(mu))
 
 
 def longitude_centers(n_lon: int) -> np.ndarray:
-    """Cell-centred longitudes in degrees, with 0 at the substellar point and antistellar at +/-180."""
+    """Longitude of each column centre in degrees, with 0 at the substellar point and ±180 at the antistellar point."""
     return np.linspace(-180.0 + 180.0 / n_lon, 180.0 - 180.0 / n_lon, n_lon)
 
 
 def latitude_edges(n_lat: int) -> np.ndarray:
-    """Cell *edges* in degrees for the Gaussian latitude grid, tiling [-90, 90].
+    """Latitude cell edges in degrees, tiling [-90, 90] (`n_lat + 1` values).
 
-    Area-conserving boundaries from the quadrature weights (cumulative in sin-latitude),
-    consistent with latitude_weights. Pass to pcolormesh so cells reach the poles.
+    Area-conserving edges consistent with `latitude_weights`. Pass to `pcolormesh` so the
+    plotted cells reach the poles.
     """
     _, weights = leggauss(n_lat)
     mu = np.concatenate([[-1.0], -1.0 + np.cumsum(weights)])
@@ -29,12 +29,12 @@ def latitude_edges(n_lat: int) -> np.ndarray:
 
 
 def longitude_edges(n_lon: int) -> np.ndarray:
-    """Cell *edges* in degrees, tiling [-180, 180]."""
+    """Longitude cell edges in degrees, tiling [-180, 180] (`n_lon + 1` values)."""
     return np.linspace(-180.0, 180.0, n_lon + 1)
 
 
 def latitude_weights(lat: np.ndarray) -> np.ndarray:
-    """Normalised latitude weights: Gaussian quadrature on the CLERO grid, cos(lat) otherwise."""
+    """Area weight of each latitude row, normalised to sum to 1. Exact Gaussian-quadrature weights on the CLERO grid, cos(lat) for any other latitude axis."""
     lat = np.asarray(lat, dtype=float)
     if np.allclose(lat, latitude_centers(lat.size)):
         _, weights = leggauss(lat.size)
@@ -51,17 +51,17 @@ def grid_records(
     levels: np.ndarray | None = None,
     value_name: str = "value",
 ) -> list[dict[str, float]]:
-    """Flatten a 2D field or 3D variable stack into grid-cell records.
+    """Flatten a field or a `(level, lat, lon)` stack into one row per grid cell, for CSV or JSON export.
 
     Args:
-        values: (lat, lon) field or (level, lat, lon) variable stack.
-        lat: latitudes in degrees; defaults to latitude_centers.
-        lon: longitudes in degrees; defaults to longitude_centers.
-        levels: level coordinates; defaults to 0..n-1.
-        value_name: key for the grid-cell value in each record.
+        values: a `(lat, lon)` field or a `(level, lat, lon)` stack.
+        lat: latitudes in degrees; defaults to `latitude_centers`.
+        lon: longitudes in degrees; defaults to `longitude_centers`.
+        levels: level coordinates for a stack; defaults to 0, 1, ....
+        value_name: key under which the cell value is stored in each row.
 
     Returns:
-        List of dicts, one per grid cell, suitable for CSV / JSON.
+        A list of dicts with keys lat, lon, (level,) and `value_name`.
     """
     array = np.asarray(values, dtype=float)
     if array.ndim == 2:

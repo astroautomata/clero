@@ -1,4 +1,4 @@
-"""vertical-profile helpers for predicted climate variables."""
+"""Vertical structure: stacking levels, pressure levels and profiles."""
 
 from __future__ import annotations
 
@@ -26,17 +26,18 @@ def vertical_profile(
     lat: np.ndarray,
     profile: str = "global_mean",
 ) -> np.ndarray:
-    """One vertical profile from a 3D (level, lat, lon) variable stack.
+    """One vertical profile of a multi-level variable.
 
     Args:
-        outputs_or_variable: prediction dict (then variable required) or a 3D array.
-        variable: variable name when passing a dict, e.g. "temperature".
+        outputs_or_variable: a climate dict (then `variable` is required) or a
+            `(level, lat, lon)` stack.
+        variable: variable name when passing a climate dict, e.g. "temperature".
         lat: latitudes in degrees, used for the area-weighted global mean.
-        profile: one of "global_mean", "substellar", "antistellar",
-            "east_terminator", "west_terminator" (the trailing "_profile" is optional).
+        profile: which column: "global_mean", "substellar", "antistellar",
+            "east_terminator" or "west_terminator".
 
     Returns:
-        1D array along levels.
+        A 1D array with one value per level.
     """
     stats = profile_stats(_profile_array(outputs_or_variable, variable), lat)
     key = profile if profile.endswith("_profile") else f"{profile}_profile"
@@ -44,10 +45,10 @@ def vertical_profile(
 
 
 def stack_levels(outputs: dict[str, Any], variable: str, *, surface_key: str | None = None) -> np.ndarray:
-    """Stack per-level fields like temperature_0, temperature_1, ... into one variable stack.
+    """Assemble the per-level fields `variable_0` to `variable_9` into one `(level, lat, lon)` array.
 
-    If `surface_key` is given and present in `outputs`, that 2D field is prepended as a
-    surface level below model level 0 (used to extend temperature profiles down to P0).
+    If `surface_key` names a field in `outputs` (e.g. "surface_temperature"), it is prepended
+    as an extra level below level 0, so that a temperature profile reaches the surface.
     """
     levels = sorted(
         (int(name.rsplit("_", 1)[1]), np.asarray(value, dtype=float))
@@ -63,13 +64,15 @@ def stack_levels(outputs: dict[str, Any], variable: str, *, surface_key: str | N
 
 
 def pressure_levels(P0: float, *, surface: bool = False) -> np.ndarray:
-    """Model-level pressures (Pa) for surface pressure `P0` in bar (as in the emulator
-    inputs), level 0 (surface) to 9 (TOA). With `surface=True`, P0 itself is prepended
-    as the bottom level (paired with a surface field stacked via `surface_key`).
+    """Pressure in Pa of the ten model levels for surface pressure `P0` in bar, level 0 (lowest) to 9 (top).
 
-    Levels are relative isobars ``sigma_k = (P_k - P_top) / (f_bottom * P0 - P_top)`` with
-    ``P_top = 10 mbar`` and ``f_bottom = 0.925``, spaced with slightly concentrated resolution
-    near the surface and the top of the atmosphere."""
+    With `surface=True`, `P0` itself is prepended as an extra bottom level, to pair with a
+    stack built using `stack_levels(..., surface_key=...)`.
+
+    The levels are the same relative isobars for every planet:
+    `sigma_k = (P_k - P_top) / (f_bottom * P0 - P_top)` with `P_top = 10 mbar` and
+    `f_bottom = 0.925`, spaced slightly more finely near the surface and the top.
+    """
     P0_pa = P0 * 1.0e5
     plev = _SIGMA_LEVELS * (_BOTTOM_SQUEEZE_FRACTION * P0_pa - _P_TOP) + _P_TOP
     return np.concatenate([[P0_pa], plev]) if surface else plev
@@ -90,26 +93,25 @@ def plot_profile(
     include_surface: bool = True,
     **kwargs,
 ):
-    """Quick plot of the vertical global-mean profile for a 3D variable. Requires matplotlib.
+    """Plot the global-mean vertical profile of a multi-level variable.
 
     Args:
-        outputs_or_variable: prediction dict (then variable required) or a 3D
-            `(level, lat, lon)` variable stack.
-        variable: variable name when passing a prediction dict, e.g. `"temperature"`.
-        lat: latitudes in degrees; defaults to latitude_centers.
-        levels: vertical coordinate. If omitted and P0 is given, pressure_levels(P0) is used.
-        P0: surface pressure in bar, used to derive pressure levels.
-        ax: existing matplotlib axes to draw on, else a new figure is made.
+        outputs_or_variable: a climate dict (then `variable` is required) or a
+            `(level, lat, lon)` stack.
+        variable: variable name when passing a climate dict, e.g. "temperature".
+        lat: latitudes in degrees; defaults to the CLERO grid.
+        levels: vertical coordinate values. If omitted and `P0` is given, `pressure_levels(P0)`.
+        P0: surface pressure in bar, giving a pressure axis in hPa.
+        ax: existing matplotlib axes to draw on; otherwise a new figure is made.
         title: plot title.
-        units: x-axis label suffix.
-        log_xscale: whether to use a log x-axis.
-        include_surface: for temperature (or any variable with a `surface_temperature`
-            counterpart), extend the profile down to the surface at P0. No-op without a
-            pressure axis (needs P0) or a surface field, or for other variables.
-        **kwargs: forwarded to plot.
+        units: x-axis label.
+        log_xscale: use a logarithmic x-axis (useful for humidity).
+        include_surface: for temperature with `P0` given, extend the profile down to the
+            surface using `surface_temperature` (default True).
+        **kwargs: forwarded to `plot`.
 
     Returns:
-        (fig, ax) pair.
+        The `(fig, ax)` pair.
     """
     import matplotlib.pyplot as plt
 
@@ -152,7 +154,7 @@ def profile_table(
     levels: np.ndarray | None = None,
     profiles: tuple[str, ...] = ("global_mean", "substellar", "antistellar"),
 ) -> list[dict[str, float | str]]:
-    """Tidy (variable, profile, level, value) rows over requested 3D variables and profile types."""
+    """One row per (variable, profile, level) with its value, for the requested multi-level variables and profile types (see `vertical_profile`)."""
     rows: list[dict[str, float | str]] = []
     for variable in variables or list(outputs):
         try:

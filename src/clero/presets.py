@@ -1,12 +1,16 @@
-"""Presets for Earth, an Earth around an M dwarf, and TRAPPIST-1e. Use as a starting point and override what you need, e.g.:
+"""Ready-made planet inputs: `EARTH`, `M_EARTH` (Earth around a 2600 K M dwarf) and `TRAPPIST1E`.
+
+Use one as a starting point and override what you need:
 
     from clero import Emulator, EARTH, M_EARTH, TRAPPIST1E
+
     emu = Emulator()
-    mean = emu.predict({**EARTH, "F_star": 3000})  # Earth-like ocean-covered planet around a red dwarf
-    mean = emu.predict({**TRAPPIST1E,
-                        "P0": 2.0,  # bar
-                        "CO2": EARTH["CO2"],
-                        "CH4": 1.0e-4})     
+    climate = emu.predict({**EARTH, "CO2": 1e-3})                  # Earth with 1000 ppm CO2
+    climate = emu.predict(M_EARTH)                                  # the same planet around an M dwarf
+    climate = emu.predict({**TRAPPIST1E, "P0": 2.0, "CO2": 4e-4, "CH4": 0.0})  # TRAPPIST-1e with a 2 bar atmosphere
+
+`TRAPPIST1E` sets only the observationally constrained bulk and stellar parameters; its
+atmosphere (`P0`, `CO2`, `CH4`) is unknown and must be supplied.
 """
 
 # Earth around the Sun (treated as a tidally locked aquaplanet). Its 365 d rotation period lies

@@ -1,4 +1,4 @@
-"""physical diagnostics derived from CLERO climate fields."""
+"""Physical diagnostics derived from a predicted climate."""
 
 from __future__ import annotations
 
@@ -16,18 +16,18 @@ def ice_fraction(
     *,
     threshold: float = 273.15,
 ) -> float:
-    """Area-weighted surface fraction colder than `threshold` K."""
+    """Fraction of the surface (area-weighted) colder than `threshold` K, from a climate dict or a surface temperature field."""
     surface = _field(outputs_or_surface_temperature, "surface_temperature")
     return float(np.average((surface < threshold).mean(axis=1), weights=_weights(surface, lat)))
 
 
 def bond_albedo(outputs_or_asr: dict[str, Any] | np.ndarray, f_star: float, lat: np.ndarray | None = None) -> float:
-    """Bond albedo from absorbed stellar radiation: 1 - 4 * global_mean(ASR) / F_star."""
+    """Bond albedo from the absorbed stellar radiation: `1 - 4 * global_mean(ASR) / F_star`. Takes a climate dict or an ASR field."""
     return float(np.clip(1.0 - 4.0 * _area_mean(_field(outputs_or_asr, "asr"), lat) / f_star, 0.0, 1.0))
 
 
 def net_toa_radiation(outputs_or_asr: dict[str, Any] | np.ndarray, olr: np.ndarray | None = None) -> np.ndarray:
-    """Net top-of-atmosphere radiation, positive downward: ASR - OLR."""
+    """Net top-of-atmosphere radiation field, `ASR - OLR` (positive is net heating). Takes a climate dict, or ASR and OLR fields."""
     if isinstance(outputs_or_asr, dict):
         return np.asarray(outputs_or_asr["asr"], dtype=float) - np.asarray(outputs_or_asr["olr"], dtype=float)
     if olr is None:
@@ -36,21 +36,20 @@ def net_toa_radiation(outputs_or_asr: dict[str, Any] | np.ndarray, olr: np.ndarr
 
 
 def water_vapor_path(outputs: dict[str, Any] | np.ndarray, *, P0: float, gravity: float) -> np.ndarray:
-    """Column water vapor path (kg/m^2) for one planet.
+    """Column water vapour path in kg/m² for one planet.
 
-    Hydrostatic column integral (1/g) * integral(q dp) over the model levels, by the
-    trapezoidal rule; it spans the sampled levels (surface slab and TOA are not
-    extrapolated). `P0` (bar) and `gravity` (m/s^2) are the planet's surface pressure
-    and gravity (the same values passed to the emulator).
+    The hydrostatic column integral (1/g) ∫ q dp over the ten model levels by the
+    trapezoidal rule. It covers the sampled levels only; the layer below level 0 and
+    above level 9 is not extrapolated.
 
     Args:
-        outputs: a prediction dict (uses its `specific_humidity_*` levels) or a
+        outputs: a climate dict (uses its `specific_humidity_0..9` fields) or a
             `(level, lat, lon)` specific-humidity stack.
-        P0: surface pressure in bar.
-        gravity: surface gravity in m/s^2.
+        P0: surface pressure in bar, as passed to the emulator.
+        gravity: surface gravity in m/s², as passed to the emulator.
 
     Returns:
-        A `(lat, lon)` water vapor path field.
+        A `(lat, lon)` water vapour path field.
     """
     q = outputs if isinstance(outputs, np.ndarray) else stack_levels(outputs, "specific_humidity")
     plev = pressure_levels(P0)

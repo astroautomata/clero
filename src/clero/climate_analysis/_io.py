@@ -1,4 +1,4 @@
-"""small file writers for demo outputs."""
+"""CSV export."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 
 def write_csv(records: list[dict[str, Any]], path: str | Path) -> Path:
-    """Write a list of dict records to CSV, creating parent dirs if needed. Columns are the sorted union of all keys."""
+    """Write a list of row dicts (e.g. from `grid_records` or `summary_table`) to a CSV file. Columns are the sorted union of all keys; parent directories are created."""
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     keys = sorted({key for row in records for key in row})

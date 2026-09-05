@@ -1,4 +1,4 @@
-"""table-friendly scalar summaries for predicted fields."""
+"""Scalar summaries in table form."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from .summary_stats import dayside_mean, global_mean, nightside_mean, summarize_
 
 
 def summary_table(outputs: dict[str, Any], lat: np.ndarray) -> list[dict[str, float | str]]:
-    """Scalar-only summary rows (name, metric, value) over a prediction dict."""
+    """One row per (field, metric) with its value, from `summarize_outputs`; profile arrays are omitted."""
     rows: list[dict[str, float | str]] = []
     for name, stats in summarize_outputs(outputs, lat).items():
         rows.extend(

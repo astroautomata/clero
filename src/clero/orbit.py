@@ -1,17 +1,19 @@
-"""Empirical stellar relations and Kepler's law, matching sampling/priors/orbit.py in XCE."""
+"""Orbital period from stellar flux and temperature, via empirical main-sequence relations and Kepler's law."""
 
 import numpy as np
 from numpy.typing import ArrayLike
 
 
 def orbital_period(F_star: ArrayLike, T_star: ArrayLike) -> np.ndarray:
-    """Estimate orbital period (days) from flux (W/m²) and stellar temperature (K).
+    """Estimate the orbital period in days from instellation (W/m²) and stellar temperature (K).
 
-    Uses Cassisi & Salaris (2019) + Duric (2004) below 3300 K, Mann (2013)
-    below 4800 K, and Moya (2018) above. These empirical main-sequence relations
-    are approximate and piecewise, with jumps at the boundaries. Prefer a measured
-    period when available. Set P_rot to this estimate only under tidal locking.
-    Inputs broadcast; scalar inputs return a zero-dimensional array.
+    For a tidally locked planet this is also its rotation period, so it can be used as
+    `P_rot` when no measured period is available (prefer a measured one when it is).
+    Stellar mass and luminosity come from empirical main-sequence relations: Cassisi &
+    Salaris (2019) with Duric (2004) below 3300 K, Mann et al. (2013) from 3300 to 4800 K,
+    and Moya et al. (2018) above; the semi-major axis then follows from the flux and the
+    period from Kepler's third law. The relations are approximate and piecewise, with
+    small jumps at the regime boundaries. Accepts scalars or arrays.
     """
     flux, temperature = np.broadcast_arrays(np.asarray(F_star, dtype=float), np.asarray(T_star, dtype=float))
     mass, luminosity = np.full_like(temperature, np.nan), np.full_like(temperature, np.nan)

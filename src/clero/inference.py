@@ -1,4 +1,4 @@
-"""prediction API"""
+"""The Emulator class."""
 
 from __future__ import annotations
 
@@ -20,19 +20,17 @@ from ._gplfr_runtime import (
 
 
 class Emulator:
-    """CLERO climate emulator. Loads the bundled model (the exact weights used in the paper) on init.
+    """The CLERO climate emulator. Loads the shipped model (the exact weights used in the paper).
 
-    Predictions can be returned in two spaces:
-
-    - ``"physical"`` (default) — fields in their natural units.
-    - ``"model"`` — the space the emulator is Gaussian in (log humidity, logit cloud
-      fraction, ...). Predictive variance is only meaningful here.
+    `predict` gives the best point estimate of a planet's climate and `sample` draws from
+    the climate distribution. Both accept one planet or a batch, and return fields in
+    physical units by default or in model space with `space="model"` (see UNCERTAINTY.md).
 
     Args:
-        bundle: path to an alternative bundle directory (``manifest.json`` + ``gplfr_state.npz``);
-            None (default) uses the shipped ``_model_bundle``.
-        device: "cpu" for the numpy path, or a torch device like "cuda" / "cuda:0".
-        dtype: torch dtype name, used only on non-cpu devices.
+        bundle: path to an alternative model directory (containing `manifest.json` and
+            `gplfr_state.npz`). None (default) uses the shipped model.
+        device: "cpu" (default) runs in NumPy; a torch device such as "cuda" runs on the GPU.
+        dtype: "float32" (default) or "float64"; used only on GPU devices.
     """
 
     def __init__(self, *, bundle: str | Path | None = None, device: str = "cpu", dtype: str = "float32"):
@@ -43,17 +41,17 @@ class Emulator:
 
     @property
     def output_names(self) -> list[str]:
-        """Field names produced by the emulator."""
+        """The 53 output field names, e.g. "surface_temperature", "temperature_0"."""
         return self._bundle.output_names
 
     @property
     def grid_shape(self) -> tuple[int, ...]:
-        """(n_lat, n_lon) of the predicted grids."""
+        """(32, 64): the number of latitude and longitude cells in each output field."""
         return tuple(int(x) for x in self._bundle.manifest["grid_shape"])
 
     @cached_property
     def bundle_sha256(self) -> str:
-        """sha256 of the loaded ``gplfr_state.npz`` (weights provenance; compare with README)."""
+        """sha256 checksum of the loaded weights file, so results can be tied to an exact model."""
         return hashlib.sha256((self._bundle.root / "gplfr_state.npz").read_bytes()).hexdigest()
 
     def predict(
@@ -69,27 +67,30 @@ class Emulator:
         fields: list[str] | tuple[str, ...] | None = None,
         unpack: bool = True,
     ):
-        """Predict the climate for one planet or a batch.
+        """Best point estimate of the climate for one planet or a batch.
 
         Args:
-            inputs: a planet dict (T_star, F_star, radius, gravity, P_rot, P0, CO2, CH4, GCM),
-                or a batch as a list of such dicts or a column dict (e.g. {"F_star": [...], "GCM": [...]}).
-            space: "physical" (default) or "model".
-            return_variance: also return the per-cell predictive variance (spatially coherent part
-                only, matching ``sample``'s default draws). Requires space="model" (variance is not
-                meaningful in physical space for nonlinearly-transformed fields).
-            include_residual: add the spatially white residual term to the variance, the analogue of
-                ``sample_residual=True`` (see UNCERTAINTY.md).
-            split_variance: return the coherent and residual variances separately (implies
-                ``return_variance``); total = coherent + residual.
-            device / batch_size: override device and chunk size for this call.
-            fields: subset of output fields. None means all.
-            unpack: if True, dict(s) keyed by field name; else flat arrays.
+            inputs: a planet dict with keys radius, gravity, P_rot, P0, CO2, CH4, F_star, T_star
+                and optionally GCM (see the README for units). A batch is a list of such dicts,
+                or a dict of equal-length sequences such as `{"F_star": [...], "GCM": [...]}`.
+            space: "physical" (default) returns natural units; "model" returns the transformed
+                space in which the climate distribution is Gaussian (see UNCERTAINTY.md).
+            return_variance: also return the variance of each field at every grid cell. Only
+                available with `space="model"`. Like `sample`'s default draws, this excludes the
+                spatially white residual term.
+            include_residual: add the spatially white residual term to the variance; the
+                analogue of `sample_residual=True` in `sample` (see UNCERTAINTY.md).
+            split_variance: return the coherent and residual variances separately instead
+                (implies `return_variance`); their sum is the total.
+            device: override the device chosen at construction for this call.
+            batch_size: planets per chunk (default 256 on CPU, 512 on GPU).
+            fields: subset of output field names to compute and return. None means all 53.
+            unpack: if True (default) return dicts keyed by field name; if False return flat arrays.
 
         Returns:
-            A field dict (or flat array); a (mean, variance) pair if return_variance;
-            a (mean, coherent_variance, residual_variance) triple if split_variance.
-            Single-planet inputs drop the batch axis.
+            A dict of `(32, 64)` fields, or `(n_planets, 32, 64)` for a batch. With
+            `return_variance` a `(mean, variance)` pair; with `split_variance` a
+            `(mean, coherent_variance, residual_variance)` triple.
         """
         batch = _is_batch(inputs)
         items = inputs if batch else [inputs]
@@ -120,22 +121,21 @@ class Emulator:
         Each draw is a complete, spatially coherent set of climate fields, so any
         quantity you compute from a draw (a global mean, an ice fraction, a map) inherits
         a calibrated uncertainty when you repeat it across draws. See UNCERTAINTY.md for
-        the spatially white residual (``sample_residual``) and for summarising humidity
-        and cloud fraction in ``space="model"``.
+        the spatially white residual (`sample_residual`) and for summarising humidity
+        and cloud fraction in `space="model"`.
 
         Args:
-            inputs: a planet dict or a batch (see ``predict``).
-            n_samples: number of draws.
-            seed: random seed; None uses fresh randomness.
+            inputs: a planet dict or a batch, as in `predict`.
+            n_samples: number of draws (default 64).
+            seed: random seed for reproducible draws; None uses fresh randomness.
             sample_residual: add the spatially white residual scatter to each draw (default False).
-            space: "physical" (default) or "model".
-            device / fields / unpack: as in ``predict``.
-            batch_size: planets per chunk, as in ``predict``. Peak memory scales as
-                batch_size * n_samples, so lower batch_size when raising n_samples.
+            space: "physical" (default) or "model", as in `predict`.
+            device, fields, unpack: as in `predict`.
+            batch_size: planets per chunk, as in `predict`. Peak memory scales with
+                `batch_size * n_samples`, so lower `batch_size` when raising `n_samples`.
 
         Returns:
-            A field dict (or flat array) with the sample axis first. Single-planet inputs
-            drop the batch axis, giving (n_samples, 32, 64) per field.
+            A dict of `(n_samples, 32, 64)` fields, or `(n_samples, n_planets, 32, 64)` for a batch.
         """
         batch = _is_batch(inputs)
         items = inputs if batch else [inputs]
@@ -154,11 +154,11 @@ class Emulator:
         values_or_inputs: np.ndarray | dict[str, float] | BatchInputs,
         inputs: dict[str, float] | BatchInputs | None = None,
     ) -> np.ndarray | dict[str, np.ndarray]:
-        """Map model-space fields to physical units (inverse of to_model).
+        """Convert fields from model space to physical units (the inverse of `to_model`).
 
-        Use ``to_physical(fields, inputs)`` for a dict, or
-        ``to_physical("field_name", values, inputs)`` for one field. ``inputs`` supplies
-        F_star, needed because ASR/OLR are F_star-normalised.
+        Use `to_physical(fields, inputs)` for a dict of fields, or
+        `to_physical("field_name", values, inputs)` for one array. `inputs` is the planet
+        the fields belong to; it is needed because ASR and OLR are stored relative to F_star.
         """
         fields, inputs, name = _transform_args(field_or_fields, values_or_inputs, inputs)
         out = outputs_to_physical(self._bundle, fields, inputs)
@@ -170,10 +170,10 @@ class Emulator:
         values_or_inputs: np.ndarray | dict[str, float] | BatchInputs,
         inputs: dict[str, float] | BatchInputs | None = None,
     ) -> np.ndarray | dict[str, np.ndarray]:
-        """Map physical fields to model space, where the predictive is Gaussian.
+        """Convert fields from physical units to model space (see UNCERTAINTY.md).
 
-        Use ``to_model(fields, inputs)`` for a dict, or
-        ``to_model("field_name", values, inputs)`` for one field.
+        Use `to_model(fields, inputs)` for a dict of fields, or
+        `to_model("field_name", values, inputs)` for one array.
         """
         fields, inputs, name = _transform_args(field_or_fields, values_or_inputs, inputs)
         out = outputs_to_model(self._bundle, fields, inputs)
