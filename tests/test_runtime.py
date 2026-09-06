@@ -522,7 +522,7 @@ def test_bundle_sha256_and_version(tmp_path: Path) -> None:
     emulator = Emulator()
     assert emulator.bundle_sha256 == BUNDLE_SHA256
     assert emulator.bundle_sha256 == hashlib.sha256((Path(clero.__file__).parent / "_model_bundle" / "gplfr_state.npz").read_bytes()).hexdigest()
-    assert clero.__version__ == "0.1.0"
+    assert clero.__version__ == "0.1.1"
     assert Emulator(bundle=build_gplfr_bundle(tmp_path)).bundle_sha256 != BUNDLE_SHA256
 
 
