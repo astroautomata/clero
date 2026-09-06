@@ -7,8 +7,7 @@ Executable notebooks showing how to use CLERO
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `quickstart.ipynb`          | Predict a planet, plot a map and a profile, get the per-cell variance, draw samples.                              |
 | `trappist1e.ipynb`          | A single-planet report: surface map, dayside, nightside and global means, vertical profiles, CSV export.          |
-| `using_clero_samples.ipynb` | Uncertainties from samples: derived quantities, the global mean, humidity in model space, batched sampling.       |
-| `uncertainty.ipynb`         | The analytic variance and samples, summarizing skewed fields, and how uncertainty grows outside the core domain. |
+| `uncertainty.ipynb`         | Uncertainties from samples and the analytic variance: derived quantities, the global mean, humidity in model space, and the core domain. |
 | `parameter_sweep.ipynb`     | A 400-planet `F_star` × `CO2` batch, mapped as global-mean surface temperature.                                  |
 | `gpu_metric_mosaic.ipynb`   | A 10,000-planet `P_rot` × `P0` batch on the GPU, summarized as a 3 × 3 mosaic of climate diagnostics.            |
 
