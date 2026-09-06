@@ -22,9 +22,9 @@ classifiers = [
 dependencies = ["matplotlib>=3.7", "numpy>=2.0", "scipy>=1.10"]
 
 [project.urls]
-Homepage = "https://github.com/edstevenson/clero"
-Repository = "https://github.com/edstevenson/clero"
-Documentation = "https://edstevenson.github.io/clero/"
+Homepage = "https://github.com/astroautomata/clero"
+Repository = "https://github.com/astroautomata/clero"
+Documentation = "https://astroautomata.github.io/clero/"
 
 [project.optional-dependencies]
 gpu = ["torch"]

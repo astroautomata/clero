@@ -2,7 +2,7 @@
 
 CLERO takes a hypothetical planet and returns its 3D steady-state climate as 53 fields on a
 32×64 latitude-longitude grid. It targets tidally locked ocean-covered rocky planets in or
-near the habitable zone. See the [README](https://github.com/edstevenson/clero#readme) for
+near the habitable zone. See the [README](https://github.com/astroautomata/clero#readme) for
 an introduction.
 """
 

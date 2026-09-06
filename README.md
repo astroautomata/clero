@@ -109,7 +109,7 @@ There's also a walk-through notebook, [demos/quickstart.ipynb](demos/quickstart.
 
 ## API
 
-Full reference (generated from the docstrings): [https://edstevenson.github.io/clero/](https://edstevenson.github.io/clero/)
+Full reference (generated from the docstrings): [https://astroautomata.github.io/clero/](https://astroautomata.github.io/clero/)
 
 `Emulator` (prediction):
 
