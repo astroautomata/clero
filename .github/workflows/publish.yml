@@ -6,11 +6,13 @@ name: publish
 #     PyPI project name: clero
 #     Owner: <GitHub owner of this repo>   Repository: clero
 #     Workflow name: publish.yml           Environment: pypi   (testpypi for the test index)
-# Then a GitHub Release publishes to PyPI; "Run workflow" publishes to TestPyPI.
+# Then a GitHub Release or a pushed v* tag publishes to PyPI; "Run workflow" publishes to TestPyPI.
 
 on:
   release:
     types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
@@ -22,6 +24,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install build twine
+      # PyPI renders the README standalone, so point its relative links at the GitHub files. The committed README is untouched.
+      - run: sed -E -i 's#\]\(([A-Za-z_][^):]*)\)#](${{ github.server_url }}/${{ github.repository }}/blob/main/\1)#g' README.md
       - run: python -m build
       - run: python -m twine check dist/*
       - uses: actions/upload-artifact@v4
@@ -46,7 +50,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   pypi:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     environment: pypi

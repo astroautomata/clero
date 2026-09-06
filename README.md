@@ -1,6 +1,6 @@
 # CLERO (CLimate Emulator for ROcky exoplanets)
 
-![Tests](https://github.com/edstevenson/clero/actions/workflows/tests.yml/badge.svg)
+![Tests](https://github.com/astroautomata/clero/actions/workflows/tests.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Docs](https://img.shields.io/badge/docs-pdoc-brightgreen.svg)
@@ -38,7 +38,7 @@ Worked examples in [demos/](demos/).
 
 `um`, `exocam` (recommended — the two high-fidelity targets). `exoplasim` is a lower-fidelity exoGCM. `exocam-pre2022` and `lfric` should be avoided at inference time — `exocam-pre2022` is an older ExoCAM version, and  `lfric` has few training simulations.
 
-For predictions where self-consistency is important (e.g., spatially resolved plots), use a single emulated GCM. Where self-consistency is not needed (e.g., global means), once can average the emulated UM and ExoCAM predictions; this reduces dependence on either GCM's structural biases.
+For predictions where self-consistency is important (e.g., spatially resolved plots), use a single emulated GCM. Where self-consistency is not needed (e.g., global means), one can average the emulated UM and ExoCAM predictions; this reduces dependence on either GCM's structural biases.
 
 ## Outputs
 
