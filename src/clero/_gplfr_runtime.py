@@ -111,6 +111,8 @@ def _transform_outputs(bundle: _CheckpointBundle, fields: dict[str, np.ndarray],
         else:
             a = a / f_star if scale else a
             a = _preprocess(a, spec["strategy"], spec["kwargs"])
+        if _base_var(raw) == "asr":  # zero where the star is below the horizon, in either space (see _zero_nightside_asr)
+            a = np.where(_nightside(a.shape[-1]), 0.0, a)
         out[name] = a.astype(np.float32, copy=False)
     return out
 
@@ -148,7 +150,7 @@ def _predict_grid_arrays(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.nda
     if "linear_Gamma" in state:
         y = y + np.einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     y = y * state.get("sh_mask", np.ones(y.shape[1:], dtype=bool))[None]
-    grid = _spectral_grid_mean(bundle, state, y)
+    grid = _zero_nightside_asr(bundle, _spectral_grid_mean(bundle, state, y))
     return grid if space == "model" else _inverse_preprocess_outputs(bundle, grid, x_raw)
 
 
@@ -161,13 +163,13 @@ def _predict_transformed_grid_mean_and_variance_arrays(bundle: _CheckpointBundle
     if "linear_Gamma" in state:
         y_mean = y_mean + np.einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     mask = state.get("sh_mask", np.ones(y_mean.shape[1:], dtype=bool))[None]
-    mean = _spectral_grid_mean(bundle, state, y_mean * mask).astype(np.float32, copy=False)
+    mean = _zero_nightside_asr(bundle, _spectral_grid_mean(bundle, state, y_mean * mask).astype(np.float32, copy=False))
     coherent = _coherent_grid_variance(bundle, state, z_var)
     variances = (coherent,)
     if split or include_residual:
         residual = _spectral_grid_variance(bundle, state, residual * mask)
         variances = (coherent, residual) if split else (coherent + residual,)
-    return (mean, *(variance.reshape(mean.shape) for variance in variances))
+    return (mean, *(_zero_nightside_asr(bundle, variance.reshape(mean.shape)) for variance in variances))
 
 
 def _predict_grid_samples(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.ndarray, n_samples: int, rng: np.random.Generator, space: str = "physical", sample_residual: bool = False) -> np.ndarray:
@@ -180,7 +182,7 @@ def _predict_grid_samples(bundle: _CheckpointBundle, x_raw: np.ndarray, s: np.nd
     if "linear_Gamma" in state:
         y = y + np.einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])[None]
     y = y * state.get("sh_mask", np.ones(y.shape[2:], dtype=bool))[None, None]
-    flat = _spectral_grid_mean(bundle, state, y.reshape(-1, y.shape[2], y.shape[3]))
+    flat = _zero_nightside_asr(bundle, _spectral_grid_mean(bundle, state, y.reshape(-1, y.shape[2], y.shape[3])))
     grid = flat if space == "model" else _inverse_preprocess_outputs(bundle, flat, np.tile(x_raw, (int(n_samples), 1)))
     return grid.reshape(int(n_samples), x_raw.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]).astype(np.float32, copy=False)
 
@@ -315,6 +317,24 @@ def _sim_index(bundle: _CheckpointBundle, name: str) -> int:
 def _base_var(name: str) -> str:
     head, _, tail = name.rpartition("_")
     return head if tail.isdigit() else name
+
+
+def _nightside(n_lon: int) -> np.ndarray:
+    """Longitude columns where the star is below the horizon, |lon| > 90, on the centred grid lon = linspace(-180 + 180/n, 180 - 180/n, n)."""
+    return np.abs(np.linspace(-180 + 180 / n_lon, 180 - 180 / n_lon, n_lon)) > 90
+
+
+def _zero_nightside_asr(bundle: _CheckpointBundle, grid: np.ndarray) -> np.ndarray:
+    """Zero the nightside columns of the ASR channels of a (..., F, lat, lon) grid, in place.
+
+    ASR is exactly zero where the star is below the horizon; the spectral representation rings around that
+    kink (about ±0.5% of the dayside peak), so the known value is enforced on means, variances and draws alike.
+    """
+    night = _nightside(grid.shape[-1])
+    for j, name in enumerate(bundle.manifest["raw_output_names"]):
+        if _base_var(name) == "asr":
+            grid[..., j, :, :][..., night] = 0.0
+    return grid
 
 
 def _preprocess(x: np.ndarray, strategy: str, kwargs: dict[str, Any]) -> np.ndarray:

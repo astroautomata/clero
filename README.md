@@ -55,6 +55,8 @@ For predictions where self-consistency is important (e.g., spatially resolved pl
 
 The 3D variables (`temperature`, `specific_humidity`, `cloud_fraction`, `u`, `v`) are given on 10 pressure levels, level 0 closest to the surface and level 9 closest to the top of the atmosphere; `clero.climate_analysis.pressure_levels(P0)` returns the level pressures.
 
+`asr` is exactly zero on the nightside (the 32 longitude columns with |lon| > 90°, where the star is below the horizon). The spectral representation would otherwise ring there by about ±0.5% of the dayside peak, so CLERO enforces the known value on means, variances and draws.
+
 ## Install
 
 ```bash
@@ -140,6 +142,7 @@ Top-level helpers:
 | scalar summaries     | `summarize_outputs`, `summary_table`, `global_mean`, `dayside_mean`, `nightside_mean`                                       |
 | vertical structure   | `vertical_profile`, `profile_table`, `profile_stats`, `stack_levels`, `pressure_levels`                                     |
 | physical diagnostics | `water_vapor_path`, `net_toa_radiation`, `ice_fraction`, `bond_albedo`                                                      |
+| climate states       | `climate_state`, `runaway_probability`, `CLIMATE_STATES`                                                                    |
 | maps & grids         | `surface_map`, `zonal_mean`, `meridional_mean`, `map_records`, `grid_records`                                               |
 | plots                | `field_map`, `ice_fraction_map`, `net_radiation_map`, `wind_map`, `wind_streamlines`, `zonal_cross_section`, `plot_profile` |
 | axes & weights       | `latitude_centers`, `longitude_centers`, `latitude_edges`, `longitude_edges`, `latitude_weights`                            |

@@ -104,8 +104,19 @@ def _predict_grid(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, sp
     if "linear_Gamma" in state:
         y = y + _torch().einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     y = y * state.get("sh_mask")[None]
-    grid = _spectral_grid_mean(bundle, state, y)
+    grid = _zero_nightside_asr(bundle, _spectral_grid_mean(bundle, state, y))
     return grid if space == "model" else _inverse_preprocess_outputs(bundle, grid, x_raw)
+
+
+def _zero_nightside_asr(bundle: _CheckpointBundle, grid):
+    """Zero the nightside columns of the ASR channels of a (..., F, lat, lon) grid, in place; the torch twin of the NumPy runtime's helper."""
+    from ._gplfr_runtime import _nightside
+
+    night = _torch().as_tensor(_nightside(grid.shape[-1]), device=grid.device)
+    for j, name in enumerate(bundle.manifest["raw_output_names"]):
+        if _base_var(name) == "asr":
+            grid[..., j, :, :][..., night] = 0.0
+    return grid
 
 
 def _predict_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, split: bool = False, include_residual: bool = False):
@@ -115,13 +126,13 @@ def _predict_mean_and_variance(bundle: _CheckpointBundle, state: dict[str, Any],
     if "linear_Gamma" in state:
         y_mean = y_mean + _torch().einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])
     mask = state["sh_mask"][None]
-    mean = _spectral_grid_mean(bundle, state, y_mean * mask)
+    mean = _zero_nightside_asr(bundle, _spectral_grid_mean(bundle, state, y_mean * mask))
     coherent = _coherent_grid_variance(bundle, state, z_var)
     variances = (coherent,)
     if split or include_residual:
         residual = _spectral_grid_variance(bundle, state, residual * mask)
         variances = (coherent, residual) if split else (coherent + residual,)
-    return (mean, *(variance.reshape(mean.shape) for variance in variances))
+    return (mean, *(_zero_nightside_asr(bundle, variance.reshape(mean.shape)) for variance in variances))
 
 
 def _predict_samples(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s, n_samples: int, generator, space: str = "physical", sample_residual: bool = False):
@@ -133,7 +144,7 @@ def _predict_samples(bundle: _CheckpointBundle, state: dict[str, Any], x_raw, s,
     if "linear_Gamma" in state:
         y = y + torch.einsum("np,paf->naf", _design_matrix(bundle, x, s), state["linear_Gamma"])[None]
     y = y * state["sh_mask"][None, None]
-    flat = _spectral_grid_mean(bundle, state, y.reshape(-1, y.shape[2], y.shape[3]))
+    flat = _zero_nightside_asr(bundle, _spectral_grid_mean(bundle, state, y.reshape(-1, y.shape[2], y.shape[3])))
     grid = flat if space == "model" else _inverse_preprocess_outputs(bundle, flat, x_raw.repeat((int(n_samples), 1)))
     return grid.reshape(int(n_samples), x_raw.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]).float()
 

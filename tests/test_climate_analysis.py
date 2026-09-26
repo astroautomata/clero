@@ -7,7 +7,9 @@ import pytest
 from numpy.testing import assert_allclose
 
 from clero.climate_analysis import (
+    CLIMATE_STATES,
     bond_albedo,
+    climate_state,
     dayside_mean,
     field_map,
     ice_fraction,
@@ -22,6 +24,7 @@ from clero.climate_analysis import (
     plot_profile,
     pressure_levels,
     profile_table,
+    runaway_probability,
     stack_levels,
     summary_table,
     surface_map,
@@ -260,3 +263,103 @@ def test_field_map_spectral_flag_switches_between_smooth_and_cells() -> None:
     fig_z, _ = zonal_cross_section(pred, "temperature", P0=1.0)
     for fig in (fig_s, fig_c, fig_i, fig_w, fig_z):
         plt.close(fig)
+
+
+PLANET = {"radius": 1.0, "gravity": 9.8, "P_rot": 10.0, "P0": 1.0, "CO2": 0.0, "CH4": 0.0, "F_star": 1000.0, "T_star": 3000.0}
+
+
+def _climate(ts, q=1.0e-6, q_top=None) -> dict[str, np.ndarray]:
+    """A 2x4 climate with uniform specific humidity `q` on every level (`q_top` overrides level 9)."""
+    levels = {f"specific_humidity_{k}": np.full((2, 4), q) for k in range(10)}
+    if q_top is not None:
+        levels["specific_humidity_9"] = np.full((2, 4), q_top)
+    return {"surface_temperature": np.asarray(ts, dtype=float), **levels}
+
+
+def _stack(*climates) -> dict[str, np.ndarray]:
+    return {name: np.stack([c[name] for c in climates]) for name in climates[0]}
+
+
+FROZEN, WARM, HOT = np.full((2, 4), 250.0), np.full((2, 4), 290.0), np.full((2, 4), 450.0)
+BELT = np.array([[290.0] * 4, [290.0, 250.0, 250.0, 250.0]])
+POND = np.array([[290.0, 250.0, 290.0, 250.0], [250.0] * 4])
+
+
+def test_climate_state_applies_the_six_rules_in_order() -> None:
+    assert climate_state(_climate(FROZEN), PLANET)["state"] == "snowball"
+    assert climate_state(_climate(WARM), PLANET)["state"] == "globally_temperate"
+    assert climate_state(_climate(BELT), PLANET)["state"] == "waterbelt"
+    assert climate_state(_climate(POND), PLANET)["state"] == "eyeball"
+    assert climate_state(_climate(WARM, q_top=1.0e-3), PLANET)["state"] == "moist_greenhouse"
+    assert climate_state(_climate(WARM, q_top=5.0e-4), PLANET)["state"] == "globally_temperate"
+    assert climate_state(_climate(FROZEN, q=0.5), PLANET)["state"] == "runaway_greenhouse"  # greenhouse first, even under ice
+    assert climate_state(_climate(HOT), PLANET)["state"] == "runaway_greenhouse"
+    assert climate_state(_climate(HOT), PLANET, surface_temperature_threshold=460.0)["state"] == "globally_temperate"
+    assert set(CLIMATE_STATES) >= {"snowball", "eyeball", "waterbelt", "globally_temperate", "moist_greenhouse", "runaway_greenhouse"}
+
+
+def test_climate_state_numbers_match_their_definitions() -> None:
+    q_levels = [k * 1.0e-3 for k in range(10)]
+    pred = _climate(BELT)
+    for k, q in enumerate(q_levels):
+        pred[f"specific_humidity_{k}"] = np.full((2, 4), q)
+    out = climate_state(pred, PLANET)
+
+    plev = pressure_levels(PLANET["P0"])  # trapezoid weights of the ten levels in pressure, normalised
+    weights = np.zeros(10)
+    for k in range(9):
+        weights[k] += 0.5 * abs(plev[k] - plev[k + 1])
+        weights[k + 1] += 0.5 * abs(plev[k] - plev[k + 1])
+    assert_allclose(out["column_water"], weights @ q_levels / weights.sum())
+    assert_allclose(out["surface_temperature"], 275.0)  # two equal-weight rows: 290 and 260
+    assert_allclose(out["ice_fraction"], 3.0 / 8.0)
+    q9 = q_levels[9]
+    assert_allclose(out["h2o_vmr_top"], (q9 / 18.01528) / (q9 / 18.01528 + (1.0 - q9) / 28.0134))
+    co2 = climate_state(pred, {**PLANET, "CO2": 0.1})
+    assert_allclose(co2["h2o_vmr_top"], (q9 / 18.01528) / (q9 / 18.01528 + (1.0 - q9) / (0.9 * 28.0134 + 0.1 * 44.0095)))
+    assert isinstance(out["state"], str) and isinstance(out["column_water"], float)
+
+
+def test_climate_state_keeps_leading_axes_and_planet_batches() -> None:
+    draws = _stack(_climate(FROZEN), _climate(WARM), _climate(FROZEN, q=0.5))
+    out = climate_state(draws, PLANET)
+    assert out["state"].tolist() == ["snowball", "globally_temperate", "runaway_greenhouse"]
+    assert out["column_water"].shape == (3,)
+
+    planets = [{**PLANET, "P0": 1.0}, {**PLANET, "P0": 3.0, "CO2": 0.1}]
+    batch = _stack(_climate(WARM, q_top=1.0e-3), _climate(POND))  # (n_planets, lat, lon)
+    out = climate_state(batch, planets)
+    single = [climate_state({k: v[i] for k, v in batch.items()}, planets[i]) for i in range(2)]
+    assert out["state"].tolist() == [s["state"] for s in single] == ["moist_greenhouse", "eyeball"]
+    assert_allclose(out["h2o_vmr_top"], [s["h2o_vmr_top"] for s in single])
+    column = {key: [p[key] for p in planets] for key in PLANET}  # the same batch as a column dict
+    assert climate_state(batch, column)["state"].tolist() == out["state"].tolist()
+
+    batch_draws = _stack(batch, batch)  # (n_samples, n_planets, lat, lon)
+    assert climate_state(batch_draws, planets)["state"].shape == (2, 2)
+    with pytest.raises(ValueError):
+        climate_state(batch, planets[:1])
+
+
+def test_runaway_probability_is_the_fraction_of_draws() -> None:
+    draws = _stack(_climate(FROZEN, q=0.5), _climate(WARM), _climate(HOT))
+    assert runaway_probability(draws, PLANET) == pytest.approx(2.0 / 3.0)
+    assert runaway_probability(draws, PLANET, surface_temperature_threshold=460.0) == pytest.approx(1.0 / 3.0)
+    batch_draws = _stack(_stack(_climate(HOT), _climate(WARM)), _stack(_climate(WARM), _climate(WARM)))
+    assert_allclose(runaway_probability(batch_draws, [PLANET, PLANET]), [0.5, 0.0])
+    with pytest.raises(ValueError):
+        runaway_probability(_climate(HOT), PLANET)  # a point estimate has no draw axis
+    with pytest.raises(ValueError):
+        climate_state(_climate(WARM, q=-3.0), PLANET)  # model-space humidity
+    with pytest.raises(KeyError):
+        climate_state({"surface_temperature": WARM}, PLANET)
+
+
+def test_climate_state_on_the_emulator() -> None:
+    from clero import TRAPPIST1E, Emulator
+
+    emu, inputs = Emulator(), {**TRAPPIST1E, "P0": 1.0, "CO2": 4e-4, "CH4": 0.0}
+    out = climate_state(emu.predict(inputs), inputs)
+    assert out["state"] in CLIMATE_STATES and out["state"] != "runaway_greenhouse"
+    assert 0.0 <= out["ice_fraction"] <= 1.0 and 0.0 < out["column_water"] < 0.3
+    assert runaway_probability(emu.sample(inputs, n_samples=8, seed=0), inputs) == 0.0

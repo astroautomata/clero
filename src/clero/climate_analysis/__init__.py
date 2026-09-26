@@ -7,6 +7,7 @@ matplotlib. Functions come in groups:
 - area means: `global_mean`, `dayside_mean`, `nightside_mean`, `summarize_outputs`, `summary_table`
 - vertical structure: `stack_levels`, `pressure_levels`, `vertical_profile`, `profile_stats`, `profile_table`
 - diagnostics: `water_vapor_path`, `net_toa_radiation`, `ice_fraction`, `bond_albedo`
+- climate states: `climate_state`, `runaway_probability`, `CLIMATE_STATES`
 - maps and plots: `field_map`, `ice_fraction_map`, `net_radiation_map`, `wind_map`, `wind_streamlines`,
   `zonal_cross_section`, `plot_profile`, `surface_map`, `zonal_mean`, `meridional_mean`
 - grid: `latitude_centers`, `longitude_centers`, `latitude_edges`, `longitude_edges`, `latitude_weights`
@@ -42,10 +43,13 @@ from .scalars import (
     summary_table,
     write_csv,
 )
+from .states import CLIMATE_STATES, climate_state, runaway_probability
 from .summary_stats import profile_stats
 
 __all__ = [
+    "CLIMATE_STATES",
     "bond_albedo",
+    "climate_state",
     "dayside_mean",
     "field_map",
     "global_mean",
@@ -66,6 +70,7 @@ __all__ = [
     "pressure_levels",
     "profile_table",
     "profile_stats",
+    "runaway_probability",
     "summarize_outputs",
     "summary_table",
     "stack_levels",

@@ -15,7 +15,7 @@ from numpy.testing import assert_allclose
 import clero
 import clero.inference
 from clero._checkpoint import _CheckpointBundle
-from clero._gplfr_runtime import outputs_to_physical, predict_gplfr_batch
+from clero._gplfr_runtime import outputs_to_model, outputs_to_physical, predict_gplfr_batch
 from clero import CORE_DOMAIN, EARTH, EXTENDED_DOMAIN, M_EARTH, TRAPPIST1E, Emulator
 from clero._checkpoint import _load_checkpoint
 from clero.climate_analysis import global_mean, grid_records, latitude_centers, longitude_centers, profile_stats, summarize_outputs
@@ -376,6 +376,60 @@ def test_to_physical_clips_specific_humidity(tmp_path: Path) -> None:
 
     assert_allclose(physical["specific_humidity_0"], [[np.exp(-1.0), 1.0, 1.0, 1.0]], rtol=1.0e-6)
     assert_allclose(physical["surface_temperature"], [[250.0, 260.0, 270.0, 280.0]])
+
+
+def test_to_physical_zeros_nightside_asr(tmp_path: Path) -> None:
+    bundle = _CheckpointBundle(
+        root=tmp_path,
+        gplfr_state={},
+        manifest={
+            "input_names": ["F_star"],
+            "output_names": ["asr", "olr"],
+            "raw_output_names": ["asr", "olr"],
+            "output_transforms": {"asr": {"strategy": "Z-scaling", "kwargs": {}}, "olr": {"strategy": "Z-scaling", "kwargs": {}}},
+            "asr_olr_normalize_by_f_star": True,
+        },
+    )
+    night = np.abs(longitude_centers(64)) > 90
+    ones = np.ones((32, 64), dtype=np.float32)
+
+    physical = outputs_to_physical(bundle, {"asr": 0.1 * ones, "olr": 0.2 * ones}, {"F_star": 1000.0})
+    model = outputs_to_model(bundle, physical, {"F_star": 1000.0})
+
+    assert night.sum() == 32
+    assert_allclose(physical["asr"][:, night], 0.0)
+    assert_allclose(physical["asr"][:, ~night], 100.0)
+    assert_allclose(physical["olr"], 200.0)
+    assert_allclose(model["asr"][:, night], 0.0)
+    assert_allclose(model["asr"][:, ~night], 0.1)
+
+
+def test_bundled_model_nightside_asr_is_zero() -> None:
+    emulator = Emulator()
+    inputs = {**TRAPPIST1E, "P0": 1.0, "CO2": 4.0e-4, "CH4": 0.0}
+    night = np.abs(longitude_centers(64)) > 90
+
+    mean = emulator.predict(inputs)
+    model, variance = emulator.predict(inputs, space="model", return_variance=True)
+    draws = emulator.sample(inputs, n_samples=2, seed=0)
+
+    assert np.all(mean["asr"][:, night] == 0.0) and mean["asr"][:, ~night].max() > 0
+    assert np.all(model["asr"][:, night] == 0.0) and np.all(variance["asr"][:, night] == 0.0)
+    assert np.all(draws["asr"][:, :, night] == 0.0) and draws["asr"][:, :, ~night].max() > 0
+    assert mean["olr"][:, night].min() > 0
+
+
+def test_torch_nightside_asr_is_zero(tmp_path: Path) -> None:
+    torch = pytest.importorskip("torch")
+    from clero._torch_runtime import _zero_nightside_asr
+
+    bundle = _CheckpointBundle(root=tmp_path, gplfr_state={}, manifest={"raw_output_names": ["asr", "olr"]})
+    grid = _zero_nightside_asr(bundle, torch.ones((3, 2, 32, 64), dtype=torch.float32))
+    night = np.abs(longitude_centers(64)) > 90
+
+    assert_allclose(grid[:, 0][..., night].numpy(), 0.0)
+    assert_allclose(grid[:, 0][..., ~night].numpy(), 1.0)
+    assert_allclose(grid[:, 1].numpy(), 1.0)
 
 
 def test_torch_physical_prediction_clips_specific_humidity(tmp_path: Path) -> None:
