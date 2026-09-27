@@ -102,9 +102,9 @@ Don't want to spell out every parameter? Start from a bundled preset and overrid
 
 ```python
 from clero import EARTH, M_EARTH, TRAPPIST1E
-mean = emu.predict({**EARTH, "CO2": 1.0e-3})   # Earth-like planet, overriden to have 1000 ppm CO2
+mean = emu.predict({**EARTH, "CO2": 1.0e-3})   # Earth-like planet, overridden to have 1000 ppm CO2
 mean = emu.predict(M_EARTH)                    # Earth-like but around a 2600 K M dwarf (self-consistent 5 day rotation period)
-mean = emu.predict({**TRAPPIST1E, "CO2": 0.0, "CH4": 0.0})    # TRAPPIST-1e with an N₂-only atmosphere 
+mean = emu.predict({**TRAPPIST1E, "P0": 1.0, "CO2": 0.0, "CH4": 0.0})    # TRAPPIST-1e with a 1 bar N₂-only atmosphere
 ```
 
 There's also a walk-through notebook, [demos/quickstart.ipynb](demos/quickstart.ipynb).
