@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clero"
-version = "0.1.2"
+version = "0.1.3"
 description = "CLERO: the CLimate Emulator for ROcky exoplanets (inference-only runtime)"
 readme = "README.md"
 requires-python = ">=3.10"
