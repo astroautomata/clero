@@ -10,7 +10,7 @@ import numpy as np
 from scipy.linalg import solve_triangular
 
 from ._checkpoint import _CheckpointBundle
-from .inputs import EXTENDED_DOMAIN
+from .inputs import CORE_DOMAIN, EXTENDED_DOMAIN
 
 
 ASR_OLR_FIELDS = {"asr", "olr"}
@@ -263,7 +263,7 @@ def _coerce_inputs_batch(bundle: _CheckpointBundle, inputs: BatchInputs) -> tupl
         x = np.asarray([[row[name] for name in bundle.input_names] for row in inputs], dtype=np.float64)
         labels = np.asarray([row.get("GCM", _DEFAULT_GCM) for row in inputs])
     _validate_inputs(bundle, x)
-    _warn_extended_domain(bundle, x)
+    _warn_outside_core_domain(bundle, x)
     for name, scale in _INPUT_UNIT_SCALE.items():
         if name in bundle.input_names:
             x[:, bundle.input_names.index(name)] *= scale
@@ -286,15 +286,27 @@ def _validate_inputs(bundle: _CheckpointBundle, x: np.ndarray) -> None:
         raise ValueError("CO2 + CH4 must be <= 1")
 
 
-def _warn_extended_domain(bundle: _CheckpointBundle, x: np.ndarray) -> None:
+def _warn_outside_core_domain(bundle: _CheckpointBundle, x: np.ndarray) -> None:
+    """Warn for each input outside the core domain of SCOPE.md, saying whether it is also outside the extended domain."""
     for name, (lo, hi) in EXTENDED_DOMAIN.items():
         if name not in bundle.input_names:
             continue
         values = x[:, bundle.input_names.index(name)]
-        if np.any((values < lo) | (values > hi)):
+        outside_extended = (values < lo) | (values > hi)
+        core_lo, core_hi = CORE_DOMAIN[name]
+        outside_core = ((values < core_lo) | (values > core_hi)) & ~outside_extended
+        if np.any(outside_extended):
             warnings.warn(
-                f"{name}={_value_range(values)} is outside CLERO's extended domain "
+                f"{name}={_value_range(values[outside_extended])} is outside CLERO's extended domain "
                 f"[{lo:g}, {hi:g}] from SCOPE.md; predictions may be unreliable.",
+                UserWarning,
+                stacklevel=3,
+            )
+        if np.any(outside_core):
+            warnings.warn(
+                f"{name}={_value_range(values[outside_core])} is in CLERO's extended domain but outside its core domain "
+                f"[{core_lo:g}, {core_hi:g}] from SCOPE.md; training simulations are sparse there, so predictions "
+                "may be unreliable.",
                 UserWarning,
                 stacklevel=3,
             )

@@ -59,7 +59,7 @@ CORE_DOMAIN = {
     "F_star": (500.0, 1500.0),
     "T_star": (2500.0, 5800.0),
 }
-"""Where the training simulations are densest and CLERO is most reliable: `{input: (low, high)}`."""
+"""Where the training simulations are densest and CLERO is most reliable; inputs outside it emit a `UserWarning`: `{input: (low, high)}`."""
 
 EXTENDED_DOMAIN = {
     "radius": (0.26, 2.76),
